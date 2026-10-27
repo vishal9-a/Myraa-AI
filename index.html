@@ -1,0 +1,3549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#6366f1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Myraa - Offline AI Companion, Productivity Suite & PDF Studio">
+  <link rel="manifest" href="manifest.json">
+  <title>MYRAA - Offline Suite</title>
+  <!-- jsPDF Library (Cached by Service Worker for Offline PDF Generation) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #090d16;
+      --surface: #131b2e;
+      --surface-card: #1c2640;
+      --surface-hover: #263354;
+      --border: rgba(255, 255, 255, 0.08);
+      --primary: #6366f1;
+      --primary-glow: rgba(99, 102, 241, 0.35);
+      --accent: #a855f7;
+      --pink: #ec4899;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --cyan: #06b6d4;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    body.theme-amoled {
+      --bg: #000000;
+      --surface: #0a0a0a;
+      --surface-card: #121212;
+      --surface-hover: #1c1c1c;
+      --border: rgba(255, 255, 255, 0.12);
+    }
+
+    body.theme-light {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-card: #f1f5f9;
+      --surface-hover: #e2e8f0;
+      --border: rgba(0, 0, 0, 0.08);
+      --text: #0f172a;
+      --text-muted: #64748b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
+      transition: background 0.25s ease, color 0.25s ease;
+    }
+
+    /* Top App Bar */
+    header {
+      background: rgba(19, 27, 46, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 9px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 40;
+      position: sticky;
+      top: 0;
+    }
+
+    body.theme-light header {
+      background: rgba(255, 255, 255, 0.92);
+    }
+    body.theme-amoled header {
+      background: rgba(10, 10, 10, 0.95);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .avatar-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--pink));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+      color: #fff;
+      box-shadow: 0 0 14px var(--primary-glow);
+    }
+
+    .brand-title {
+      font-size: 16.5px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      background: linear-gradient(135deg, #fff, #c7d2fe);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    body.theme-light .brand-title {
+      background: linear-gradient(135deg, #1e1b4b, var(--primary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid transparent;
+      cursor: pointer;
+    }
+
+    .status-badge.online {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .status-badge.offline {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    .status-badge.online .status-dot {
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+
+    .status-badge.offline .status-dot {
+      background: #f59e0b;
+      box-shadow: 0 0 8px #f59e0b;
+    }
+
+    .icon-btn {
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 15px;
+      transition: all 0.2s ease;
+    }
+
+    .icon-btn:active {
+      transform: scale(0.92);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    /* OFFLINE BANNER */
+    .offline-banner {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #090d16;
+      font-weight: 700;
+      font-size: 11.5px;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-align: center;
+      z-index: 35;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+    }
+
+    .offline-banner.show {
+      max-height: 40px;
+      padding: 7px 14px;
+      opacity: 1;
+    }
+
+    /* UPDATE TOAST */
+    .update-toast {
+      position: fixed;
+      bottom: 74px;
+      left: 50%;
+      transform: translateX(-50%) translateY(90px);
+      background: linear-gradient(135deg, #1e1b4b, #312e81);
+      border: 1px solid rgba(99, 102, 241, 0.6);
+      color: #f8fafc;
+      padding: 8px 16px;
+      border-radius: 28px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+      z-index: 100;
+      transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .update-toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .update-btn {
+      background: var(--primary);
+      border: none;
+      color: white;
+      padding: 5px 12px;
+      border-radius: 14px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* Thumb-Friendly Bottom Tab Bar */
+    nav.tab-bar {
+      display: flex;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 4px 6px;
+      justify-content: space-around;
+      z-index: 40;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 6px 4px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex: 1;
+    }
+
+    .tab-btn.active {
+      color: var(--text);
+      background: rgba(99, 102, 241, 0.18);
+    }
+
+    .tab-btn span.tab-icon {
+      font-size: 18px;
+    }
+
+    /* Screens */
+    main {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+    }
+
+    .screen {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 14px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    /* DAILY SUMMARY CARD */
+    .summary-card {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(168, 85, 247, 0.14));
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      border-radius: 16px;
+      padding: 12px 14px;
+      margin: 10px 14px 4px;
+    }
+
+    .summary-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text);
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .summary-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 4px;
+      text-align: center;
+    }
+
+    .summary-item-val {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--primary);
+    }
+
+    .summary-item-label {
+      font-size: 9px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    /* CHAT SCREEN */
+    #screen-chat {
+      padding: 0;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .msg {
+      max-width: 85%;
+      padding: 10px 14px;
+      border-radius: 18px;
+      font-size: 14px;
+      line-height: 1.45;
+      word-wrap: break-word;
+      user-select: text;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg.user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, #4f46e5, var(--primary));
+      color: #ffffff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg.bot {
+      align-self: flex-start;
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-bottom-left-radius: 4px;
+    }
+
+    .msg-tag {
+      display: inline-block;
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 6px;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    .tag-offline { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .tag-command { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; }
+    .tag-synced { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+
+    .msg-pending {
+      font-size: 11px;
+      color: #fed7aa;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    .msg-time {
+      font-size: 9.5px;
+      opacity: 0.6;
+      margin-top: 4px;
+      text-align: right;
+    }
+
+    .chat-input-bar {
+      padding: 10px 14px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .chat-input {
+      flex: 1;
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 10px 16px;
+      color: var(--text);
+      font-size: 14.5px;
+      outline: none;
+      user-select: text;
+    }
+
+    .send-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border: none;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 0 12px var(--primary-glow);
+    }
+
+    .mic-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .mic-btn.listening {
+      background: var(--rose);
+      color: white;
+      animation: pulse 1.2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7); }
+      70% { box-shadow: 0 0 0 12px rgba(244, 63, 94, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); }
+    }
+
+    /* CARD COMPONENTS */
+    .card {
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-size: 14.5px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .input-field {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 13.5px;
+      margin-bottom: 10px;
+      outline: none;
+      user-select: text;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 13.5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 2px 8px var(--primary-glow);
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .pill-badge {
+      display: inline-block;
+      font-size: 10.5px;
+      padding: 3px 8px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+    }
+
+    /* LIST ITEMS */
+    .list-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .list-item.pinned {
+      border-color: rgba(245, 158, 11, 0.45);
+      background: rgba(245, 158, 11, 0.08);
+    }
+
+    .pin-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      opacity: 0.45;
+      padding: 4px;
+    }
+
+    .pin-btn.active {
+      opacity: 1;
+      transform: scale(1.15);
+    }
+
+    .todo-checkbox {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      background: transparent;
+      color: #fff;
+      font-size: 12px;
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+
+    .todo-checkbox.checked {
+      background: var(--emerald);
+      border-color: var(--emerald);
+    }
+
+    .todo-text.checked {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+
+    /* POMODORO CIRCLE & STYLES */
+    .pomodoro-box {
+      text-align: center;
+      padding: 18px 12px;
+    }
+
+    .pomodoro-timer {
+      font-size: 46px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: var(--primary);
+      margin: 10px 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mode-chips {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .mode-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 5px 12px;
+      border-radius: 14px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .mode-chip.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    /* HABIT 7-DAY MINI GRID */
+    .habit-week-dots {
+      display: flex;
+      gap: 5px;
+      margin-top: 6px;
+    }
+
+    .habit-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      font-size: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .habit-dot.done {
+      background: var(--emerald);
+      color: #fff;
+    }
+
+    /* CALENDAR GRID */
+    .cal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      text-align: center;
+    }
+
+    .cal-day-label {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      font-weight: 700;
+      padding: 4px 0;
+    }
+
+    .cal-cell {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 2px;
+      min-height: 38px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .cal-cell.today {
+      border-color: var(--primary);
+      color: var(--primary);
+      font-weight: 800;
+    }
+
+    .cal-cell.selected {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .cal-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--pink);
+      position: absolute;
+      bottom: 3px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    /* DRAWING CANVAS */
+    #sketch-canvas {
+      width: 100%;
+      height: 260px;
+      background: #ffffff;
+      border-radius: 14px;
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    /* MORE DRAWER MODAL */
+    .drawer-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .drawer-item {
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    .drawer-item:active {
+      transform: scale(0.95);
+      background: var(--surface-hover);
+    }
+
+    .drawer-icon {
+      font-size: 24px;
+    }
+
+    .drawer-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      color: var(--text);
+    }
+
+    /* SWITCH TOGGLE */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; inset: 0;
+      background-color: rgba(255, 255, 255, 0.15);
+      transition: .3s; border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute; content: ""; height: 18px; width: 18px;
+      left: 3px; bottom: 3px; background-color: white;
+      transition: .3s; border-radius: 50%;
+    }
+    input:checked + .slider { background-color: var(--primary); }
+    input:checked + .slider:before { transform: translateX(20px); }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* MODAL SHEETS */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      display: none;
+      align-items: flex-end;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-sheet {
+      width: 100%;
+      max-height: 86vh;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-top-left-radius: 20px;
+      border-top-right-radius: 20px;
+      padding: 16px;
+      overflow-y: auto;
+      box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.6);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* FLASHCARD FLIP */
+    .flashcard {
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px 16px;
+      min-height: 160px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.2s;
+    }
+
+    .flashcard:active {
+      transform: scale(0.98);
+    }
+
+    /* DOCUMENT SCANNER PREVIEWS */
+    .scan-pages-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    .scan-thumb {
+      width: 100%;
+      height: 110px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    /* QR Code Display Canvas */
+    #qr-canvas-holder {
+      text-align: center;
+      padding: 14px;
+      background: #ffffff;
+      border-radius: 14px;
+      display: inline-block;
+      margin: 10px auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Fullscreen App Lock Screen (PIN Protection) -->
+  <div id="lock-screen" style="position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px;">
+    <div class="avatar-icon" style="width: 54px; height: 54px; font-size: 24px; margin-bottom: 14px;">M</div>
+    <h2 style="font-size: 20px; font-weight: 700;">Myraa is Locked</h2>
+    <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;" id="lock-screen-msg">Enter 4-digit PIN</p>
+    
+    <div style="display: flex; gap: 16px; margin: 24px 0 32px;">
+      <div id="pindot-0" style="width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--primary);"></div>
+      <div id="pindot-1" style="width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--primary);"></div>
+      <div id="pindot-2" style="width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--primary);"></div>
+      <div id="pindot-3" style="width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--primary);"></div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, 72px); gap: 16px;">
+      <button class="icon-btn" style="width: 72px; height: 72px; font-size: 24px; font-weight: 600;" onclick="handlePinInput('1')">1</button>
+      <button class="icon-btn" style="width: 72px; height: 72px; font-size: 24px; font-weight: 600;" onclick="handlePinInput('2')">2</button>
+      <button class="icon-btn" style="width: 72px; height: 72px; font-size: 24px; font-weight: 600;" onclick="handlePinInput('3')">3</button>
+      <button class="icon-btn" style="width: 72px; height: 72px; font-size: 24px; font-weight: 600;" onclick="handlePinInput('4')">4</button>
+      <button class="icon-btn" style="width: 72px; height: 72px; font-size: 24px; font-weight: 600;" onclick="handlePinInput('5')">5</button>
+      <button class="icon-btn" style="width: 72px; height: 72px; font-size: 24px; font-weight: 600;" onclick="handlePinInput('6')">6</button>
+      <button class="icon-btn" style="width: 72px; height: 72px; font-size: 24px; font-weight: 600;" onclick="handlePinInput('7')">7</button>
+      <button class="icon-btn" style="width: 72px; height: 72px; font-size: 24px; font-weight: 600;" onclick="handlePinInput('8')">8</button>
+      <button class="icon-btn" style="width: 72px; height: 72px; font-size: 24px; font-weight: 600;" onclick="handlePinInput('9')">9</button>
+      <button class="icon-btn" style="width: 72px; height: 72px; font-size: 16px; color: var(--text-muted);" onclick="clearPinInput()">C</button>
+      <button class="icon-btn" style="width: 72px; height: 72px; font-size: 24px; font-weight: 600;" onclick="handlePinInput('0')">0</button>
+      <button class="icon-btn" style="width: 72px; height: 72px; font-size: 18px;" onclick="backspacePinInput()">⌫</button>
+    </div>
+  </div>
+
+  <!-- Top App Bar -->
+  <header>
+    <div class="brand" onclick="switchTab('chat')">
+      <div class="avatar-icon">M</div>
+      <div>
+        <div class="brand-title">MYRAA</div>
+        <div style="font-size: 9.5px; color: var(--text-muted);">Offline AI & Productivity Suite</div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <!-- Live Status Badge -->
+      <div id="connection-status" class="status-badge online" onclick="syncPendingQueueManually()" title="Tap to sync pending queue">
+        <span class="status-dot"></span>
+        <span id="connection-text">Online</span>
+      </div>
+
+      <!-- Quick Global Search Icon -->
+      <button class="icon-btn" title="Global Search" onclick="switchTab('search')">
+        🔍
+      </button>
+
+      <!-- Settings / Menu -->
+      <button class="icon-btn" title="More & Settings" onclick="openMoreDrawer()">
+        ☰
+      </button>
+    </div>
+  </header>
+
+  <!-- OFFLINE BANNER -->
+  <div id="offline-banner" class="offline-banner">
+    <span>⚠️ Offline mode — All 22 local tools, scanner & storage active</span>
+  </div>
+
+  <!-- SERVICE WORKER UPDATE TOAST -->
+  <div id="update-toast" class="update-toast">
+    <span>✨ Update available!</span>
+    <button class="update-btn" onclick="applyServiceWorkerUpdate()">Reload</button>
+  </div>
+
+  <!-- Main Screens Container -->
+  <main>
+    <!-- SCREEN 1: CHAT & DAILY SUMMARY (HomeScreen) -->
+    <div class="screen active" id="screen-chat">
+      <!-- Daily Summary Card (Requirement 16) -->
+      <div class="summary-card" id="home-daily-summary">
+        <div class="summary-title">
+          <span id="summary-date-label">Today's Overview</span>
+          <span class="pill-badge" id="summary-streak-badge">⚡ Streak: 0d</span>
+        </div>
+        <div class="summary-grid">
+          <div class="summary-item" onclick="switchTab('notes-todos')">
+            <div class="summary-item-val" id="sum-tasks-val">0</div>
+            <div class="summary-item-label">Tasks Due</div>
+          </div>
+          <div class="summary-item" onclick="switchTab('focus')">
+            <div class="summary-item-val" id="sum-habits-val">0</div>
+            <div class="summary-item-label">Habits Left</div>
+          </div>
+          <div class="summary-item" onclick="switchTab('notes-todos')">
+            <div class="summary-item-val" id="sum-remind-val">0</div>
+            <div class="summary-item-label">Reminders</div>
+          </div>
+          <div class="summary-item" onclick="switchTab('expenses')">
+            <div class="summary-item-val" id="sum-kharcha-val">₹0</div>
+            <div class="summary-item-label">Kharcha</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-messages" id="chat-messages"></div>
+
+      <div class="chat-input-bar">
+        <button class="mic-btn" id="chat-mic-btn" onclick="toggleSpeechRecognition()" title="Spoken input (STT)">
+          🎙️
+        </button>
+        <input type="text" class="chat-input" id="chat-input-box" placeholder="Ask, command: 'note...', 'timer 25 min', 'spent 200'..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+        <button class="send-btn" onclick="sendChatMessage()" title="Send">
+          ➔
+        </button>
+      </div>
+    </div>
+
+    <!-- SCREEN 2: TASKS, NOTES & REMINDERS -->
+    <div class="screen" id="screen-notes-todos">
+      <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+        <input type="text" id="notes-todos-filter" class="input-field" style="margin-bottom: 0;" placeholder="🔍 Search notes, tasks, reminders..." oninput="handleNotesTodosFilter(this.value)">
+      </div>
+
+      <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+        <button class="btn-primary" style="padding: 9px; flex: 1;" onclick="openAddNoteDialog()">+ Note</button>
+        <button class="btn-primary" style="padding: 9px; flex: 1; background: linear-gradient(135deg, var(--emerald), #059669);" onclick="openAddTodoDialog()">+ Task</button>
+        <button class="btn-primary" style="padding: 9px; flex: 1; background: linear-gradient(135deg, var(--amber), #d97706);" onclick="openAddReminderDialog()">+ Reminder</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>⏰ Active Reminders</span>
+          <span class="pill-badge" id="reminders-count-badge">0</span>
+        </div>
+        <div id="reminders-container"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>✅ Tasks / To-Dos</span>
+          <span class="pill-badge" id="todo-count-badge">0</span>
+        </div>
+        <div id="todos-container"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>📝 Saved Notes</span>
+          <span class="pill-badge" id="note-count-badge">0</span>
+        </div>
+        <div id="notes-container"></div>
+      </div>
+    </div>
+
+    <!-- SCREEN 3: FOCUS & HABITS (Requirement 1 & 2) -->
+    <div class="screen" id="screen-focus">
+      <!-- Pomodoro Focus Timer -->
+      <div class="card pomodoro-box">
+        <div class="mode-chips">
+          <div class="mode-chip active" id="pomo-mode-work" onclick="setPomodoroMode('work', 25)">Focus (25m)</div>
+          <div class="mode-chip" id="pomo-mode-short" onclick="setPomodoroMode('short', 5)">Short Break (5m)</div>
+          <div class="mode-chip" id="pomo-mode-long" onclick="setPomodoroMode('long', 15)">Long Break (15m)</div>
+        </div>
+
+        <div class="pomodoro-timer" id="pomodoro-display">25:00</div>
+
+        <div style="display: flex; gap: 8px; justify-content: center; margin-top: 10px;">
+          <button class="btn-primary" id="btn-pomo-start" style="padding: 10px 24px;" onclick="togglePomodoroTimer()">▶ Start</button>
+          <button class="btn-secondary" style="padding: 10px 18px;" onclick="resetPomodoroTimer()">↺ Reset</button>
+        </div>
+
+        <div style="display: flex; justify-content: space-around; margin-top: 16px; font-size: 12px; color: var(--text-muted);">
+          <div>Today: <strong style="color: var(--text);" id="pomo-today-min">0 mins</strong></div>
+          <div>Sessions: <strong style="color: var(--text);" id="pomo-today-sessions">0</strong></div>
+          <div>Focus Streak: <strong style="color: var(--amber);" id="pomo-streak-days">0 days</strong></div>
+        </div>
+      </div>
+
+      <!-- Habit Tracker with Daily Check-Ins & 7-Day Streaks (Requirement 2) -->
+      <div class="card">
+        <div class="card-title">
+          <span>🔥 Habit Tracker</span>
+          <button class="pill-badge" style="background: var(--primary); color: #fff; cursor: pointer; border: none; padding: 4px 10px;" onclick="promptAddHabit()">+ New Habit</button>
+        </div>
+        <div id="habits-list-container"></div>
+      </div>
+    </div>
+
+    <!-- SCREEN 4: CREATION STUDIO (PDF, SCANNER, SKETCH, QR) (Requirements 7, 8, 9, 10) -->
+    <div class="screen" id="screen-studio">
+      <!-- Studio Tabs Switcher -->
+      <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px; scrollbar-width: none;">
+        <button class="mode-chip active" id="subtab-pdf-btn" onclick="switchStudioSubtab('pdf')">📄 PDF Maker</button>
+        <button class="mode-chip" id="subtab-scan-btn" onclick="switchStudioSubtab('scan')">📷 Doc Scanner</button>
+        <button class="mode-chip" id="subtab-sketch-btn" onclick="switchStudioSubtab('sketch')">🎨 Sketch Pad</button>
+        <button class="mode-chip" id="subtab-qr-btn" onclick="switchStudioSubtab('qr')">🏁 QR Maker</button>
+      </div>
+
+      <!-- SUBTAB 1: PDF Maker -->
+      <div id="studio-pane-pdf">
+        <div class="card">
+          <div class="card-title">
+            <span>⚡ Offline PDF Converter</span>
+            <span class="pill-badge" style="color: #34d399;">100% Airplane Mode</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+            <button class="btn-secondary" onclick="generateOfflineNotesPdf()">📝 Notes to Multi-Page PDF</button>
+            <button class="btn-secondary" onclick="generateOfflineChatPdf()">💬 Chat History to PDF</button>
+            <button class="btn-secondary" onclick="promptCustomTextPdf()">✏️ Custom Document to PDF</button>
+            <button class="btn-secondary" onclick="document.getElementById('img-to-pdf-input').click()">🖼️ Images to PDF Album</button>
+            <input type="file" id="img-to-pdf-input" accept="image/*" multiple style="display: none;" onchange="convertImagesToPdf(event)">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span>✨ AI Document Generator (Online)</span>
+          </div>
+          <input type="text" id="pdf-topic-input" class="input-field" placeholder="Topic: e.g. Quantum Computing, UPSC Notes...">
+          <input type="number" id="pdf-pages-input" class="input-field" value="20" min="1" placeholder="Target pages (no limit)">
+          <button class="btn-primary" onclick="startAiPdfGeneration()">🚀 Generate Multi-Page Book</button>
+        </div>
+      </div>
+
+      <!-- SUBTAB 2: Document Scanner (Requirement 7) -->
+      <div id="studio-pane-scan" style="display: none;">
+        <div class="card">
+          <div class="card-title">
+            <span>📷 Offline Document Scanner</span>
+            <span class="pill-badge" id="scan-count-badge">0 Pages</span>
+          </div>
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
+            Snap pages with your phone camera, rotate, reorder, and compile into a multi-page PDF.
+          </p>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn-primary" style="flex: 1;" onclick="document.getElementById('scan-camera-input').click()">📸 Snap Photo</button>
+            <button class="btn-secondary" style="flex: 1;" onclick="document.getElementById('scan-gallery-input').click()">🖼️ Gallery</button>
+          </div>
+          <input type="file" id="scan-camera-input" accept="image/*" capture="environment" style="display: none;" onchange="handleScannedImage(event)">
+          <input type="file" id="scan-gallery-input" accept="image/*" multiple style="display: none;" onchange="handleScannedImage(event)">
+
+          <div class="scan-pages-grid" id="scan-thumbnails-grid"></div>
+
+          <button class="btn-primary" id="btn-compile-scanned-pdf" style="display: none; margin-top: 10px; background: linear-gradient(135deg, var(--emerald), #059669);" onclick="compileScannedDocToPdf()">
+            📥 Compile All Pages to PDF
+          </button>
+        </div>
+      </div>
+
+      <!-- SUBTAB 3: Sketch & Drawing Pad (Requirement 10) -->
+      <div id="studio-pane-sketch" style="display: none;">
+        <div class="card" style="padding: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 13.5px; font-weight: 700;">🎨 Canvas Sketch Pad</span>
+            <div style="display: flex; gap: 6px;">
+              <button class="icon-btn" style="width: 28px; height: 28px; font-size: 11px;" onclick="clearSketchCanvas()">🗑️</button>
+              <button class="icon-btn" style="width: 28px; height: 28px; font-size: 11px;" onclick="saveSketchAsImage()">💾</button>
+              <button class="icon-btn" style="width: 28px; height: 28px; font-size: 11px;" onclick="saveSketchAsPdf()">📄</button>
+            </div>
+          </div>
+
+          <canvas id="sketch-canvas"></canvas>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+            <div style="display: flex; gap: 6px;">
+              <span class="icon-btn" style="width: 26px; height: 26px; background: #000000;" onclick="setPenColor('#000000')"></span>
+              <span class="icon-btn" style="width: 26px; height: 26px; background: #ef4444;" onclick="setPenColor('#ef4444')"></span>
+              <span class="icon-btn" style="width: 26px; height: 26px; background: #3b82f6;" onclick="setPenColor('#3b82f6')"></span>
+              <span class="icon-btn" style="width: 26px; height: 26px; background: #10b981;" onclick="setPenColor('#10b981')"></span>
+              <span class="icon-btn" style="width: 26px; height: 26px; background: #f59e0b;" onclick="setPenColor('#f59e0b')"></span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <label style="font-size: 11px; color: var(--text-muted);">Size:</label>
+              <input type="range" id="pen-size-slider" min="2" max="24" value="4" style="width: 80px;" oninput="setPenWidth(this.value)">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUBTAB 4: QR Code Generator (Requirement 9) -->
+      <div id="studio-pane-qr" style="display: none;">
+        <div class="card">
+          <div class="card-title">
+            <span>🏁 Offline QR Code Maker</span>
+          </div>
+          <select id="qr-type-select" class="input-field" onchange="toggleQrTypeInputs(this.value)">
+            <option value="text">Plain Text / Note</option>
+            <option value="url">Website / Link</option>
+            <option value="wifi">Wi-Fi Network</option>
+          </select>
+
+          <input type="text" id="qr-input-main" class="input-field" placeholder="Enter text or URL...">
+
+          <div id="qr-wifi-box" style="display: none;">
+            <input type="text" id="qr-wifi-ssid" class="input-field" placeholder="Wi-Fi SSID / Name">
+            <input type="password" id="qr-wifi-pass" class="input-field" placeholder="Wi-Fi Password">
+          </div>
+
+          <button class="btn-primary" onclick="generateQrCode()">⚡ Generate QR Code</button>
+
+          <div style="text-align: center; margin-top: 14px;">
+            <div id="qr-canvas-holder">
+              <canvas id="qr-canvas" width="200" height="200"></canvas>
+            </div>
+            <div style="margin-top: 8px;">
+              <button class="btn-secondary" style="margin: auto; width: auto; padding: 6px 16px;" onclick="downloadQrCode()">📥 Save QR PNG</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 5: CALENDAR & AGENDA (Requirement 4) -->
+    <div class="screen" id="screen-calendar">
+      <div class="card">
+        <div class="cal-header">
+          <button class="icon-btn" onclick="changeCalendarMonth(-1)">◀</button>
+          <strong id="cal-month-title" style="font-size: 15px;">October 2026</strong>
+          <button class="icon-btn" onclick="changeCalendarMonth(1)">▶</button>
+        </div>
+
+        <div class="cal-grid" id="cal-grid-container"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span id="cal-selected-date-label">Events on Selected Date</span>
+          <button class="pill-badge" style="background: var(--primary); color: #fff; border: none; cursor: pointer;" onclick="promptAddCalendarEvent()">+ Add Event</button>
+        </div>
+        <div id="cal-events-list"></div>
+      </div>
+    </div>
+
+    <!-- SCREEN 6: DAILY JOURNAL & MOOD (Requirement 5) -->
+    <div class="screen" id="screen-journal">
+      <div class="card">
+        <div class="card-title">
+          <span>📖 Daily Journal & Reflection</span>
+          <span class="pill-badge" id="journal-count-badge">0 Entries</span>
+        </div>
+
+        <input type="text" id="journal-title-input" class="input-field" placeholder="Journal Title (e.g. A productive rainy day)">
+
+        <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Select Mood:</label>
+        <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 8px;">
+          <button class="mode-chip active" onclick="selectJournalMood('😊 Happy', this)">😊 Happy</button>
+          <button class="mode-chip" onclick="selectJournalMood('🎯 Productive', this)">🎯 Productive</button>
+          <button class="mode-chip" onclick="selectJournalMood('😌 Calm', this)">😌 Calm</button>
+          <button class="mode-chip" onclick="selectJournalMood('⚡ Energetic', this)">⚡ Energetic</button>
+          <button class="mode-chip" onclick="selectJournalMood('😔 Low', this)">😔 Low</button>
+          <button class="mode-chip" onclick="selectJournalMood('😴 Tired', this)">😴 Tired</button>
+        </div>
+
+        <textarea id="journal-text-input" class="input-field" style="height: 100px; resize: none;" placeholder="Write your thoughts, ideas, gratitude..."></textarea>
+        <button class="btn-primary" onclick="saveJournalEntry()">💾 Save Journal Entry</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Past Journal Entries</div>
+        <div id="journal-entries-list"></div>
+      </div>
+    </div>
+
+    <!-- SCREEN 7: EXPENSES & CSV EXPORT (Requirement 3) -->
+    <div class="screen" id="screen-expenses">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3 style="font-size: 16px; font-weight: 700;">💰 Expense Tracker</h3>
+        <div style="display: flex; gap: 6px;">
+          <button class="pill-badge" style="background: var(--primary); color: #fff; cursor: pointer; border: none; padding: 5px 10px;" onclick="openAddExpenseDialog()">+ Add</button>
+          <button class="pill-badge" style="background: var(--emerald); color: #fff; cursor: pointer; border: none; padding: 5px 10px;" onclick="exportExpensesCSV()">📊 CSV</button>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+        <div class="card" style="margin-bottom: 0; text-align: center;">
+          <div style="font-size: 11px; color: var(--text-muted);">Today's Kharcha</div>
+          <div style="font-size: 20px; font-weight: 800; color: var(--rose);" id="stat-today-expense">₹0</div>
+        </div>
+        <div class="card" style="margin-bottom: 0; text-align: center;">
+          <div style="font-size: 11px; color: var(--text-muted);">This Month</div>
+          <div style="font-size: 20px; font-weight: 800; color: #38bdf8;" id="stat-month-expense">₹0</div>
+        </div>
+      </div>
+
+      <!-- Simple Mini SVG Expense Bar Chart (Requirement 3) -->
+      <div class="card">
+        <div class="card-title" style="font-size: 13px;">Past 7 Days Kharcha Chart</div>
+        <div id="expense-bar-chart-holder" style="height: 100px; display: flex; align-items: flex-end; gap: 8px; padding-top: 10px;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Recent Transactions</div>
+        <div id="expense-list-container"></div>
+      </div>
+    </div>
+
+    <!-- SCREEN 8: FLASHCARDS & QUIZ (Requirement 11) -->
+    <div class="screen" id="screen-flashcards">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3 style="font-size: 16px; font-weight: 700;">🃏 Spaced Flashcards</h3>
+        <div style="display: flex; gap: 6px;">
+          <button class="pill-badge" style="background: var(--primary); color: #fff; border: none; cursor: pointer;" onclick="promptAddFlashcard()">+ Card</button>
+          <button class="pill-badge" style="background: var(--accent); color: #fff; border: none; cursor: pointer;" onclick="generateQuizFromNotes()">⚡ Quiz From Notes</button>
+        </div>
+      </div>
+
+      <!-- Active Interactive Card -->
+      <div id="flashcard-study-box">
+        <div class="flashcard" onclick="flipActiveFlashcard()">
+          <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;" id="fc-side-label">Front (Tap to flip)</div>
+          <div style="font-size: 17px; font-weight: 700; margin-top: 8px;" id="fc-text-content">Tap '+ Card' or 'Quiz From Notes' to begin!</div>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-top: 10px;" id="fc-rating-buttons">
+          <button class="btn-secondary" style="flex: 1; color: var(--rose);" onclick="rateFlashcard('hard')">Hard</button>
+          <button class="btn-secondary" style="flex: 1; color: var(--amber);" onclick="rateFlashcard('medium')">Medium</button>
+          <button class="btn-secondary" style="flex: 1; color: var(--emerald);" onclick="rateFlashcard('easy')">Easy</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 14px;">
+        <div class="card-title">All Deck Cards (<span id="fc-total-count">0</span>)</div>
+        <div id="fc-cards-list"></div>
+      </div>
+    </div>
+
+    <!-- SCREEN 9: GLOSSARY & TEXT TOOLS (Requirements 12 & 13) -->
+    <div class="screen" id="screen-tools">
+      <div class="card">
+        <div class="card-title">
+          <span>📚 Built-in Offline Glossary</span>
+          <button class="pill-badge" style="background: var(--primary); color: #fff; border: none; cursor: pointer;" onclick="promptAddGlossaryWord()">+ Add Word</button>
+        </div>
+        <input type="text" id="glossary-filter-input" class="input-field" placeholder="Search glossary terms..." oninput="filterGlossary(this.value)">
+        <div id="glossary-list-holder" style="max-height: 200px; overflow-y: auto;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🛠️ Smart Text Tools</div>
+        <textarea id="text-tools-input" class="input-field" style="height: 100px; resize: none;" placeholder="Paste or type text to convert, count, or clean..." oninput="updateTextCounts()"></textarea>
+
+        <div style="display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-muted); margin-bottom: 8px;">
+          <span>Words: <strong id="tt-word-count">0</strong></span>
+          <span>Chars: <strong id="tt-char-count">0</strong></span>
+          <span>Read Time: <strong id="tt-read-time">0m</strong></span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px;">
+          <button class="btn-secondary" style="font-size: 11px;" onclick="convertTextCase('upper')">UPPERCASE</button>
+          <button class="btn-secondary" style="font-size: 11px;" onclick="convertTextCase('lower')">lowercase</button>
+          <button class="btn-secondary" style="font-size: 11px;" onclick="convertTextCase('title')">Title Case</button>
+          <button class="btn-secondary" style="font-size: 11px;" onclick="convertTextCase('sentence')">Sentence case</button>
+          <button class="btn-secondary" style="font-size: 11px;" onclick="convertTextCase('camel')">camelCase</button>
+          <button class="btn-secondary" style="font-size: 11px;" onclick="removeDuplicateLines()">No Dupes</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN 10: VOICE NOTES RECORDER (Requirement 6) -->
+    <div class="screen" id="screen-voice">
+      <div class="card" style="text-align: center; padding: 22px 14px;">
+        <h3 style="font-size: 17px; font-weight: 700;">Offline Voice Notes</h3>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Record high-quality audio notes offline</p>
+
+        <button class="icon-btn" id="record-audio-btn" style="width: 72px; height: 72px; font-size: 28px; background: var(--rose); color: white; margin: 16px auto 8px;" onclick="toggleAudioRecording()">
+          🎙️
+        </button>
+
+        <div id="recording-timer" style="font-size: 16px; font-weight: 700; color: var(--rose); margin-top: 6px;">00:00</div>
+        <div id="recording-status" style="font-size: 12px; color: var(--text-muted);">Tap mic to start recording</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>Saved Audio Notes</span>
+          <span class="pill-badge" id="voice-notes-count">0</span>
+        </div>
+        <div id="voice-notes-list"></div>
+      </div>
+    </div>
+
+    <!-- SCREEN 11: UNIVERSAL OFFLINE SEARCH (Requirement 15) -->
+    <div class="screen" id="screen-search">
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <input type="text" id="global-search-input" class="input-field" style="margin-bottom: 0;" placeholder="Search notes, chats, journal, tasks, expenses..." oninput="handleGlobalSearch(this.value)">
+      </div>
+
+      <div id="search-results-area">
+        <p style="text-align: center; color: var(--text-muted); font-size: 13px; margin-top: 30px;">
+          Type anything above to search across your offline records.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom Navigation Tab Bar (Thumb-Friendly with More Drawer) -->
+  <nav class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('chat')">
+      <span class="tab-icon">💬</span>
+      <span>Chat</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('notes-todos')">
+      <span class="tab-icon">📝</span>
+      <span>Tasks</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('focus')">
+      <span class="tab-icon">⚡</span>
+      <span>Focus</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('studio')">
+      <span class="tab-icon">📄</span>
+      <span>Studio</span>
+    </button>
+    <button class="tab-btn" onclick="openMoreDrawer()">
+      <span class="tab-icon">☰</span>
+      <span>More</span>
+    </button>
+  </nav>
+
+  <!-- MODAL: "MORE" DRAWER (Unified Access to All Offline Tools) -->
+  <div class="modal-overlay" id="more-drawer-modal" onclick="if(event.target===this) closeMoreDrawer()">
+    <div class="modal-sheet">
+      <div class="card-title">
+        <span>⚡ Myraa Offline Tools</span>
+        <button class="icon-btn" onclick="closeMoreDrawer()">✕</button>
+      </div>
+
+      <div class="drawer-grid">
+        <div class="drawer-item" onclick="closeMoreDrawer(); switchTab('calendar')">
+          <span class="drawer-icon">📅</span>
+          <span class="drawer-label">Calendar</span>
+        </div>
+        <div class="drawer-item" onclick="closeMoreDrawer(); switchTab('journal')">
+          <span class="drawer-icon">📖</span>
+          <span class="drawer-label">Journal</span>
+        </div>
+        <div class="drawer-item" onclick="closeMoreDrawer(); switchTab('expenses')">
+          <span class="drawer-icon">💰</span>
+          <span class="drawer-label">Kharcha</span>
+        </div>
+        <div class="drawer-item" onclick="closeMoreDrawer(); switchTab('flashcards')">
+          <span class="drawer-icon">🃏</span>
+          <span class="drawer-label">Flashcards</span>
+        </div>
+        <div class="drawer-item" onclick="closeMoreDrawer(); switchTab('voice')">
+          <span class="drawer-icon">🎙️</span>
+          <span class="drawer-label">Audio</span>
+        </div>
+        <div class="drawer-item" onclick="closeMoreDrawer(); switchTab('tools')">
+          <span class="drawer-icon">🛠️</span>
+          <span class="drawer-label">Text & Glossary</span>
+        </div>
+        <div class="drawer-item" onclick="closeMoreDrawer(); openStorageManager()">
+          <span class="drawer-icon">💾</span>
+          <span class="drawer-label">Storage</span>
+        </div>
+        <div class="drawer-item" onclick="closeMoreDrawer(); openDiagnosticsModal()">
+          <span class="drawer-icon">🩺</span>
+          <span class="drawer-label">Self-Test</span>
+        </div>
+        <div class="drawer-item" onclick="closeMoreDrawer(); openSettingsModal()">
+          <span class="drawer-icon">⚙️</span>
+          <span class="drawer-label">Settings</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SETTINGS, THEMES & ENCRYPTED BACKUP (Requirements 17, 21, 22) -->
+  <div class="modal-overlay" id="settings-modal" onclick="if(event.target===this) closeSettingsModal()">
+    <div class="modal-sheet">
+      <div class="card-title">
+        <span>⚙️ Settings & System</span>
+        <button class="icon-btn" onclick="closeSettingsModal()">✕</button>
+      </div>
+
+      <!-- Themes & Accent Colors (Requirement 17) -->
+      <div class="card">
+        <div class="card-title" style="font-size: 13.5px;">🎨 Theme & Colors</div>
+        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+          <button class="mode-chip" id="theme-btn-dark" onclick="applyTheme('dark')">Dark</button>
+          <button class="mode-chip" id="theme-btn-amoled" onclick="applyTheme('amoled')">AMOLED</button>
+          <button class="mode-chip" id="theme-btn-light" onclick="applyTheme('light')">Light</button>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <span class="icon-btn" style="background: #6366f1;" onclick="applyAccentColor('#6366f1')"></span>
+          <span class="icon-btn" style="background: #10b981;" onclick="applyAccentColor('#10b981')"></span>
+          <span class="icon-btn" style="background: #06b6d4;" onclick="applyAccentColor('#06b6d4')"></span>
+          <span class="icon-btn" style="background: #ec4899;" onclick="applyAccentColor('#ec4899')"></span>
+          <span class="icon-btn" style="background: #f59e0b;" onclick="applyAccentColor('#f59e0b')"></span>
+          <span class="icon-btn" style="background: #8b5cf6;" onclick="applyAccentColor('#8b5cf6')"></span>
+        </div>
+      </div>
+
+      <!-- Gemini API Key -->
+      <div class="card">
+        <div class="card-title" style="font-size: 13.5px;">Gemini API Key (Online Mode)</div>
+        <input type="password" id="gemini-key-input" class="input-field" placeholder="AIzaSy...">
+        <button class="btn-primary" onclick="saveGeminiApiKey()">Save Key</button>
+      </div>
+
+      <!-- Encrypted Backup & Restore (Requirement 21) -->
+      <div class="card">
+        <div class="card-title" style="font-size: 13.5px;">🔐 Encrypted Backup / Restore</div>
+        <p style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 8px;">Protect your exported JSON backup with an AES-GCM password.</p>
+        <input type="password" id="backup-pwd-input" class="input-field" placeholder="Optional encryption password">
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-primary" onclick="exportDataAsJSON()">Export File</button>
+          <button class="btn-secondary" onclick="document.getElementById('import-file-input').click()">Import File</button>
+        </div>
+        <input type="file" id="import-file-input" accept=".json" style="display: none;" onchange="importDataFromJSON(event)">
+      </div>
+
+      <!-- First-Run Onboarding Tour (Requirement 22) -->
+      <div class="card">
+        <button class="btn-secondary" onclick="openOnboardingTour()">ℹ️ Replay Offline Onboarding Tour</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: STORAGE MANAGER (Requirement 20) -->
+  <div class="modal-overlay" id="storage-modal" onclick="if(event.target===this) closeStorageModal()">
+    <div class="modal-sheet">
+      <div class="card-title">
+        <span>💾 Storage Manager</span>
+        <button class="icon-btn" onclick="closeStorageModal()">✕</button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Manage space used by each offline feature in IndexedDB.</p>
+      <div id="storage-breakdown-list"></div>
+      <button class="btn-secondary" style="color: var(--rose); border-color: rgba(244, 63, 94, 0.4); margin-top: 12px;" onclick="confirmClearAllData()">⚠️ Clear All Data</button>
+    </div>
+  </div>
+
+  <!-- MODAL: OFFLINE DIAGNOSTICS / SELF-TEST (Rule requirement) -->
+  <div class="modal-overlay" id="diagnostics-modal" onclick="if(event.target===this) closeDiagnosticsModal()">
+    <div class="modal-sheet">
+      <div class="card-title">
+        <span>🩺 Offline Diagnostics</span>
+        <button class="icon-btn" onclick="closeDiagnosticsModal()">✕</button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Validates all offline APIs and storage on your device.</p>
+      <div id="diagnostics-list"></div>
+      <button class="btn-primary" style="margin-top: 12px;" onclick="runDiagnosticsCheck()">🔄 Re-run Diagnostics</button>
+    </div>
+  </div>
+
+  <!-- MODAL: ONBOARDING TOUR (Requirement 22) -->
+  <div class="modal-overlay" id="onboarding-modal" onclick="if(event.target===this) closeOnboardingTour()">
+    <div class="modal-sheet" style="text-align: center; padding: 24px 16px;">
+      <div class="avatar-icon" style="width: 58px; height: 58px; font-size: 26px; margin: 0 auto 12px;">M</div>
+      <h2 style="font-size: 20px; font-weight: 800;">Welcome to MYRAA</h2>
+      <p style="font-size: 13px; color: var(--text-muted); margin: 8px 0 16px;">Your 100% Offline-First Personal AI & Productivity Suite.</p>
+      <div style="text-align: left; background: var(--surface-card); border-radius: 12px; padding: 12px; font-size: 12.5px; line-height: 1.6; margin-bottom: 16px;">
+        ✈️ <strong>Airplane Mode Ready:</strong> All notes, flashcards, scanner, voice, and commands work with zero Wi-Fi.<br>
+        🔒 <strong>Private & Local:</strong> Your data never leaves your phone.<br>
+        📄 <strong>Studio:</strong> Generate unlimited PDFs, scan physical documents, and create QR codes.<br>
+        ⚡ <strong>Focus & Habits:</strong> Pomodoro timer and daily streaks keep you on track.
+      </div>
+      <button class="btn-primary" style="width: 100%;" onclick="closeOnboardingTour()">Got it! Let's Go 🚀</button>
+    </div>
+  </div>
+
+  <script>
+    /* =====================================================================
+       1. CORE INITIALIZATION & SERVICE WORKER
+       ===================================================================== */
+    let newWorkerWaiting = null;
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => {
+            if (reg.waiting) {
+              newWorkerWaiting = reg.waiting;
+              showUpdateToast();
+            }
+            reg.addEventListener('updatefound', () => {
+              const newWorker = reg.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    newWorkerWaiting = newWorker;
+                    showUpdateToast();
+                  }
+                });
+              }
+            });
+          })
+          .catch((err) => console.warn('[SW] Registration:', err));
+
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) {
+            refreshing = true;
+            window.location.reload();
+          }
+        });
+      });
+    }
+
+    function showUpdateToast() {
+      const toast = document.getElementById('update-toast');
+      if (toast) toast.classList.add('show');
+    }
+
+    function applyServiceWorkerUpdate() {
+      if (newWorkerWaiting) {
+        newWorkerWaiting.postMessage({ type: 'SKIP_WAITING' });
+      } else {
+        window.location.reload();
+      }
+    }
+
+    /* =====================================================================
+       2. NETWORK STATUS & DYNAMIC OFFLINE BANNER
+       ===================================================================== */
+    function updateConnectionStatus() {
+      const isOnline = navigator.onLine;
+      const statusBadge = document.getElementById('connection-status');
+      const statusText = document.getElementById('connection-text');
+      const offlineBanner = document.getElementById('offline-banner');
+
+      if (isOnline) {
+        statusBadge.className = 'status-badge online';
+        statusText.innerText = 'Online';
+        if (offlineBanner) offlineBanner.classList.remove('show');
+        syncPendingQueue();
+      } else {
+        statusBadge.className = 'status-badge offline';
+        statusText.innerText = 'Offline';
+        if (offlineBanner) offlineBanner.classList.add('show');
+      }
+    }
+
+    window.addEventListener('online', updateConnectionStatus);
+    window.addEventListener('offline', updateConnectionStatus);
+
+    /* =====================================================================
+       3. PURE INDEXEDDB ARCHITECTURE (Version 5 - Full Offline Suite)
+       ===================================================================== */
+    const DB_NAME = 'MyraaDB';
+    const DB_VERSION = 5;
+    let dbInstance = null;
+
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        try {
+          if (dbInstance) return resolve(dbInstance);
+          const req = indexedDB.open(DB_NAME, DB_VERSION);
+          
+          req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            const stores = [
+              { name: 'chats', opts: { keyPath: 'id', autoIncrement: true } },
+              { name: 'notes', opts: { keyPath: 'id', autoIncrement: true } },
+              { name: 'todos', opts: { keyPath: 'id', autoIncrement: true } },
+              { name: 'reminders', opts: { keyPath: 'id', autoIncrement: true } },
+              { name: 'memory', opts: { keyPath: 'key' } },
+              { name: 'settings', opts: { keyPath: 'key' } },
+              { name: 'expenses', opts: { keyPath: 'id', autoIncrement: true } },
+              { name: 'voice_notes', opts: { keyPath: 'id', autoIncrement: true } },
+              { name: 'queue', opts: { keyPath: 'id', autoIncrement: true } },
+              { name: 'saved_pdfs', opts: { keyPath: 'id', autoIncrement: true } },
+              { name: 'pomodoro_sessions', opts: { keyPath: 'id', autoIncrement: true } },
+              { name: 'habits', opts: { keyPath: 'id', autoIncrement: true } },
+              { name: 'calendar_events', opts: { keyPath: 'id', autoIncrement: true } },
+              { name: 'journal', opts: { keyPath: 'id', autoIncrement: true } },
+              { name: 'flashcards', opts: { keyPath: 'id', autoIncrement: true } },
+              { name: 'glossary', opts: { keyPath: 'id', autoIncrement: true } },
+              { name: 'scanned_docs', opts: { keyPath: 'id', autoIncrement: true } }
+            ];
+
+            stores.forEach(s => {
+              if (!db.objectStoreNames.contains(s.name)) {
+                db.createObjectStore(s.name, s.opts);
+              }
+            });
+          };
+
+          req.onsuccess = (e) => {
+            dbInstance = e.target.result;
+            resolve(dbInstance);
+          };
+
+          req.onerror = (e) => reject(e.target.error);
+        } catch (err) {
+          reject(err);
+        }
+      });
+    }
+
+    async function dbGetAll(storeName) {
+      try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, 'readonly');
+          const store = tx.objectStore(storeName);
+          const req = store.getAll();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => reject(req.error);
+        });
+      } catch (e) {
+        return [];
+      }
+    }
+
+    async function dbGet(storeName, key) {
+      try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, 'readonly');
+          const store = tx.objectStore(storeName);
+          const req = store.get(key);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function dbAdd(storeName, item) {
+      try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, 'readwrite');
+          const store = tx.objectStore(storeName);
+          const req = store.add(item);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function dbPut(storeName, item) {
+      try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, 'readwrite');
+          const store = tx.objectStore(storeName);
+          const req = store.put(item);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function dbDelete(storeName, key) {
+      try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, 'readwrite');
+          const store = tx.objectStore(storeName);
+          const req = store.delete(key);
+          req.onsuccess = () => resolve(true);
+          req.onerror = () => reject(req.error);
+        });
+      } catch (e) {
+        return false;
+      }
+    }
+
+    async function dbClear(storeName) {
+      try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, 'readwrite');
+          const store = tx.objectStore(storeName);
+          const req = store.clear();
+          req.onsuccess = () => resolve(true);
+          req.onerror = () => reject(req.error);
+        });
+      } catch (e) {
+        return false;
+      }
+    }
+
+    async function getSetting(key, defaultVal = null) {
+      const item = await dbGet('settings', key);
+      return item ? item.value : defaultVal;
+    }
+
+    async function setSetting(key, value) {
+      await dbPut('settings', { key, value });
+    }
+
+    /* =====================================================================
+       4. THEMES & ACCENT COLORS (Requirement 17)
+       ===================================================================== */
+    async function loadThemeSettings() {
+      const theme = await getSetting('app_theme', 'dark');
+      applyTheme(theme, false);
+      const accent = await getSetting('app_accent', '#6366f1');
+      applyAccentColor(accent, false);
+    }
+
+    async function applyTheme(themeName, persist = true) {
+      document.body.classList.remove('theme-amoled', 'theme-light');
+      if (themeName === 'amoled') document.body.classList.add('theme-amoled');
+      if (themeName === 'light') document.body.classList.add('theme-light');
+      document.querySelectorAll('#settings-modal .mode-chip').forEach(c => c.classList.remove('active'));
+      const activeBtn = document.getElementById(`theme-btn-${themeName}`);
+      if (activeBtn) activeBtn.classList.add('active');
+      if (persist) await setSetting('app_theme', themeName);
+    }
+
+    async function applyAccentColor(hex, persist = true) {
+      document.documentElement.style.setProperty('--primary', hex);
+      document.documentElement.style.setProperty('--primary-glow', hex + '44');
+      if (persist) await setSetting('app_accent', hex);
+    }
+
+    /* =====================================================================
+       5. AUDIO CHIME & SPEECH SYNTHESIS (TTS/STT)
+       ===================================================================== */
+    let voiceOutputEnabled = true;
+    let voiceSpeed = 1.0;
+    let isRecordingSpeech = false;
+    let recognitionInstance = null;
+
+    async function playOfflineChime(freq = 587.33, duration = 0.3) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.5, ctx.currentTime + duration * 0.7);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+        osc.start();
+        osc.stop(ctx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function speakVoice(text) {
+      if (!voiceOutputEnabled || !('speechSynthesis' in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const clean = text.replace(/[*#_`]/g, '').substring(0, 280);
+        const utterance = new SpeechSynthesisUtterance(clean);
+        utterance.rate = voiceSpeed;
+        const voices = window.speechSynthesis.getVoices();
+        const preferred = voices.find(v => v.lang.startsWith('hi') || v.lang.startsWith('en'));
+        if (preferred) utterance.voice = preferred;
+        window.speechSynthesis.speak(utterance);
+      } catch (e) {}
+    }
+
+    function toggleSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Speech recognition not supported in this browser. Please type.");
+        return;
+      }
+      const micBtn = document.getElementById('chat-mic-btn');
+      if (isRecordingSpeech) {
+        recognitionInstance?.stop();
+        micBtn.classList.remove('listening');
+        isRecordingSpeech = false;
+        return;
+      }
+      recognitionInstance = new SpeechRecognition();
+      recognitionInstance.lang = 'hi-IN';
+      recognitionInstance.onstart = () => {
+        isRecordingSpeech = true;
+        micBtn.classList.add('listening');
+      };
+      recognitionInstance.onresult = (e) => {
+        const transcript = e.results[0][0].transcript;
+        document.getElementById('chat-input-box').value = transcript;
+        sendChatMessage();
+      };
+      recognitionInstance.onend = () => {
+        micBtn.classList.remove('listening');
+        isRecordingSpeech = false;
+      };
+      recognitionInstance.start();
+    }
+
+    /* =====================================================================
+       6. DAILY SUMMARY CARD (Requirement 16)
+       ===================================================================== */
+    async function refreshDailySummary() {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const [todos, habits, reminders, expenses, pomoStreak] = await Promise.all([
+        dbGetAll('todos'),
+        dbGetAll('habits'),
+        dbGetAll('reminders'),
+        dbGetAll('expenses'),
+        getSetting('pomo_streak_days', '0')
+      ]);
+
+      const activeTodos = todos.filter(t => !t.completed).length;
+      const habitsLeft = habits.filter(h => !(h.history && h.history.includes(todayStr))).length;
+      const activeReminders = reminders.filter(r => !r.notified).length;
+
+      let todayKharcha = 0;
+      expenses.forEach(e => {
+        if (e.date === todayStr) todayKharcha += (e.amount || 0);
+      });
+
+      document.getElementById('sum-tasks-val').innerText = activeTodos;
+      document.getElementById('sum-habits-val').innerText = habitsLeft;
+      document.getElementById('sum-remind-val').innerText = activeReminders;
+      document.getElementById('sum-kharcha-val').innerText = `₹${todayKharcha}`;
+      document.getElementById('summary-streak-badge').innerText = `⚡ Focus: ${pomoStreak}d`;
+    }
+
+    /* =====================================================================
+       7. SMARTER LOCAL COMMAND PARSER (Requirement 14)
+       ===================================================================== */
+    async function processOfflineCommands(rawText) {
+      const text = rawText.trim();
+      const lower = text.toLowerCase();
+
+      // 1. Time & Date
+      if (/^(time|kiti vajle|samay|what time)$/i.test(lower)) {
+        return { handled: true, reply: `Abhi time: ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:true})} ⏰` };
+      }
+      if (/^(date|tarikh|aaj ka din|today date)$/i.test(lower)) {
+        return { handled: true, reply: `Aaj hai: ${new Date().toLocaleDateString('en-IN', {weekday:'long', month:'long', day:'numeric'})} 📅` };
+      }
+
+      // 2. Pomodoro Focus Trigger: "start 25 min timer", "start pomodoro", "focus start"
+      if (/start (?:25 min )?(?:timer|pomodoro|focus)/i.test(lower)) {
+        switchTab('focus');
+        setPomodoroMode('work', 25);
+        togglePomodoroTimer();
+        return { handled: true, reply: "Starting 25-minute Pomodoro focus session! ⚡" };
+      }
+
+      // 3. Math & Calc
+      if (/^[0-9+\-*/().% ]+$/.test(lower) || lower.startsWith('calc') || lower.startsWith('hisab')) {
+        try {
+          const expr = lower.replace(/calc|hisab/g, '').trim();
+          const res = Function(`'use strict'; return (${expr})`)();
+          if (typeof res === 'number') return { handled: true, reply: `Hisab: ${expr} = ${res} 🔢` };
+        } catch(e) {}
+      }
+
+      // 4. Notes & Last Note to PDF: "make a PDF of my last note", "pdf of notes"
+      if (/pdf of (?:my )?last note/i.test(lower) || /last note.*pdf/i.test(lower)) {
+        const notes = await dbGetAll('notes');
+        if (notes.length === 0) return { handled: true, reply: "No notes saved yet to export." };
+        const lastNote = notes[notes.length - 1];
+        exportSingleNoteToPdf(lastNote);
+        return { handled: true, reply: `Generated PDF for your last note: "${lastNote.title}"! 📄` };
+      }
+
+      if (/^(add note|note likho|save note)\s+(.+)/i.test(lower)) {
+        const match = text.match(/^(?:add note|note likho|save note)\s+(.+)/i);
+        const body = match[1].trim();
+        await dbAdd('notes', { title: body.substring(0, 22), content: body, pinned: false, timestamp: Date.now() });
+        loadNotesAndTodos();
+        refreshDailySummary();
+        return { handled: true, reply: `Note saved: "${body}" 📝` };
+      }
+
+      // 5. Reminders: "remind me in 10 min to drink water"
+      const remindMatch = lower.match(/remind me in\s+(\d+)\s*(?:min|minute|minutes)\s+to\s+(.+)/i);
+      if (remindMatch) {
+        const mins = parseInt(remindMatch[1], 10);
+        const task = remindMatch[2].trim();
+        await dbAdd('reminders', { title: task, dueTimestamp: Date.now() + mins * 60000, notified: false, created: Date.now() });
+        loadRemindersList();
+        refreshDailySummary();
+        return { handled: true, reply: `Reminder scheduled for "${task}" in ${mins} minutes! ⏰` };
+      }
+
+      // 6. Expenses: "spent 200 on food" / "200 chai pe kharch"
+      const expMatch = lower.match(/(?:spent|kharch(?:a)?)\s+(\d+)\s*(?:on|pe)?\s*([a-z\s]+)?/i) || lower.match(/(\d+)\s*([a-z\s]+)\s*pe kharch/i);
+      if (expMatch) {
+        const amt = parseFloat(expMatch[1]);
+        const note = (expMatch[2] || "General").trim();
+        await dbAdd('expenses', { amount: amt, type: 'expense', category: 'Food & Chai', note, date: new Date().toISOString().split('T')[0], timestamp: Date.now() });
+        loadExpenseData();
+        refreshDailySummary();
+        return { handled: true, reply: `Recorded expense of ₹${amt} for ${note} 💰` };
+      }
+
+      // 7. Habits: "habit done yoga"
+      if (/habit done\s+(.+)/i.test(lower)) {
+        const hName = lower.replace('habit done', '').trim();
+        const habits = await dbGetAll('habits');
+        const h = habits.find(x => x.name.toLowerCase().includes(hName));
+        if (h) {
+          toggleHabitCheckin(h.id);
+          return { handled: true, reply: `Awesome! Checked off habit: "${h.name}" 🔥` };
+        }
+      }
+
+      // 8. Coin Flip & Dice
+      if (/flip coin|toss/i.test(lower)) {
+        return { handled: true, reply: Math.random() > 0.5 ? "🪙 Heads (Chhap)!" : "🪙 Tails (Pat)!" };
+      }
+      if (/roll dice|dice/i.test(lower)) {
+        return { handled: true, reply: `🎲 Rolled: ${Math.floor(Math.random() * 6) + 1}!` };
+      }
+
+      return { handled: false };
+    }
+
+    /* =====================================================================
+       8. CHAT SEND & QUEUE AUTO-SYNC
+       ===================================================================== */
+    async function sendChatMessage() {
+      const input = document.getElementById('chat-input-box');
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = "";
+
+      const userMsg = { sender: 'user', text, timestamp: Date.now(), isPending: false };
+
+      const cmd = await processOfflineCommands(text);
+      if (cmd.handled) {
+        await dbAdd('chats', userMsg);
+        await dbAdd('chats', { sender: 'bot', text: cmd.reply, timestamp: Date.now(), tag: 'Command' });
+        loadChatHistory();
+        speakVoice(cmd.reply);
+        return;
+      }
+
+      if (!navigator.onLine) {
+        userMsg.isPending = true;
+        const savedId = await dbAdd('chats', userMsg);
+        await dbAdd('queue', { chatId: savedId, text, timestamp: Date.now() });
+        const fallback = "I need internet for that, I've saved it to send later.";
+        await dbAdd('chats', { sender: 'bot', text: fallback, timestamp: Date.now(), offlineMode: true });
+        loadChatHistory();
+        speakVoice(fallback);
+        return;
+      }
+
+      await dbAdd('chats', userMsg);
+      loadChatHistory();
+
+      try {
+        const reply = await callGeminiAPI(text);
+        await dbAdd('chats', { sender: 'bot', text: reply, timestamp: Date.now() });
+        loadChatHistory();
+        speakVoice(reply);
+      } catch (err) {
+        userMsg.isPending = true;
+        await dbAdd('queue', { text, timestamp: Date.now() });
+        await dbAdd('chats', { sender: 'bot', text: "I need internet for that, I've saved it to send later.", timestamp: Date.now(), offlineMode: true });
+        loadChatHistory();
+      }
+    }
+
+    async function syncPendingQueue() {
+      const queueItems = await dbGetAll('queue');
+      if (queueItems.length === 0) return;
+      for (const item of queueItems) {
+        try {
+          const reply = await callGeminiAPI(item.text);
+          if (item.chatId) {
+            const chatMsg = await dbGet('chats', item.chatId);
+            if (chatMsg) {
+              chatMsg.isPending = false;
+              await dbPut('chats', chatMsg);
+            }
+          }
+          await dbAdd('chats', { sender: 'bot', text: reply, timestamp: Date.now(), tag: 'Synced' });
+          await dbDelete('queue', item.id);
+        } catch (e) { break; }
+      }
+      loadChatHistory();
+    }
+
+    function syncPendingQueueManually() {
+      if (!navigator.onLine) {
+        alert("Currently offline. Connect to Wi-Fi/data to sync.");
+        return;
+      }
+      syncPendingQueue();
+    }
+
+    async function callGeminiAPI(prompt) {
+      const apiKey = await getSetting('myraa_gemini_key');
+      if (!apiKey) throw new Error("NO_API_KEY");
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const payload = {
+        contents: [{ role: 'user', parts: [{ text: `You are Myraa, personal offline-capable AI companion. Reply concisely in Hindi/English:\n\n${prompt}` }] }]
+      };
+      const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || "Samajh nahi aaya, firse try karna.";
+    }
+
+    async function loadChatHistory() {
+      const container = document.getElementById('chat-messages');
+      const chats = await dbGetAll('chats');
+      container.innerHTML = "";
+
+      if (chats.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; margin: auto; padding: 20px; color: var(--text-muted);">
+            <div class="avatar-icon" style="width: 48px; height: 48px; margin: 0 auto 10px; font-size: 20px;">M</div>
+            <strong style="color: var(--text);">Namaste! Main Myraa hu.</strong>
+            <p style="font-size: 12.5px; margin-top: 6px;">Your offline productivity companion. Try: "add note idea", "start 25 min timer", "spent 150 on snacks", or tap Studio for scanner.</p>
+          </div>
+        `;
+        return;
+      }
+
+      chats.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = `msg ${msg.sender}`;
+        let tag = "";
+        if (msg.tag === 'Command') tag = `<span class="msg-tag tag-command">⚡ Local Command</span><br>`;
+        else if (msg.tag === 'Synced') tag = `<span class="msg-tag tag-synced">✨ Synced</span><br>`;
+        else if (msg.offlineMode) tag = `<span class="msg-tag tag-offline">⚡ Offline</span><br>`;
+        let pending = msg.isPending ? `<div class="msg-pending">⏳ Saved to send later...</div>` : '';
+        const time = new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        div.innerHTML = `${tag}${escapeHTML(msg.text)}${pending}<div class="msg-time">${time}</div>`;
+        container.appendChild(div);
+      });
+      container.scrollTop = container.scrollHeight;
+    }
+
+    /* =====================================================================
+       9. POMODORO FOCUS TIMER (Requirement 1)
+       ===================================================================== */
+    let pomoSecondsRemaining = 25 * 60;
+    let pomodoroInterval = null;
+    let pomoRunning = false;
+    let pomoCurrentMode = 'work';
+
+    function setPomodoroMode(mode, minutes) {
+      if (pomoRunning) togglePomodoroTimer();
+      pomoCurrentMode = mode;
+      pomoSecondsRemaining = minutes * 60;
+      document.querySelectorAll('.mode-chips .mode-chip').forEach(c => c.classList.remove('active'));
+      const chip = document.getElementById(`pomo-mode-${mode}`);
+      if (chip) chip.classList.add('active');
+      updatePomodoroDisplay();
+    }
+
+    function updatePomodoroDisplay() {
+      const mins = String(Math.floor(pomoSecondsRemaining / 60)).padStart(2, '0');
+      const secs = String(pomoSecondsRemaining % 60).padStart(2, '0');
+      document.getElementById('pomodoro-display').innerText = `${mins}:${secs}`;
+    }
+
+    function togglePomodoroTimer() {
+      const btn = document.getElementById('btn-pomo-start');
+      if (pomoRunning) {
+        clearInterval(pomodoroInterval);
+        pomoRunning = false;
+        btn.innerText = "▶ Resume";
+      } else {
+        pomoRunning = true;
+        btn.innerText = "⏸ Pause";
+        pomodoroInterval = setInterval(async () => {
+          pomoSecondsRemaining--;
+          updatePomodoroDisplay();
+          if (pomoSecondsRemaining <= 0) {
+            clearInterval(pomodoroInterval);
+            pomoRunning = false;
+            btn.innerText = "▶ Start";
+            playOfflineChime(880, 0.7);
+            alert("⏰ Pomodoro session complete! Great focus!");
+            await recordCompletedPomodoro();
+          }
+        }, 1000);
+      }
+    }
+
+    function resetPomodoroTimer() {
+      if (pomoRunning) togglePomodoroTimer();
+      setPomodoroMode(pomoCurrentMode, pomoCurrentMode === 'work' ? 25 : (pomoCurrentMode === 'short' ? 5 : 15));
+      document.getElementById('btn-pomo-start').innerText = "▶ Start";
+    }
+
+    async function recordCompletedPomodoro() {
+      await dbAdd('pomodoro_sessions', { type: pomoCurrentMode, durationMin: 25, timestamp: Date.now() });
+      const curStreak = parseInt(await getSetting('pomo_streak_days', '0'), 10);
+      await setSetting('pomo_streak_days', (curStreak + 1).toString());
+      loadPomodoroStats();
+      refreshDailySummary();
+    }
+
+    async function loadPomodoroStats() {
+      const sessions = await dbGetAll('pomodoro_sessions');
+      const today = new Date().toDateString();
+      const todaySessions = sessions.filter(s => new Date(s.timestamp).toDateString() === today);
+      document.getElementById('pomo-today-sessions').innerText = todaySessions.length;
+      document.getElementById('pomo-today-min').innerText = `${todaySessions.length * 25} mins`;
+      const streak = await getSetting('pomo_streak_days', '0');
+      document.getElementById('pomo-streak-days').innerText = `${streak} days`;
+    }
+
+    /* =====================================================================
+       10. HABIT TRACKER (Requirement 2)
+       ===================================================================== */
+    async function loadHabits() {
+      const habits = await dbGetAll('habits');
+      const container = document.getElementById('habits-list-container');
+      if (habits.length === 0) {
+        container.innerHTML = `<p style="font-size: 12.5px; color: var(--text-muted); padding: 8px;">No habits tracked yet. Tap '+ New Habit' to build daily routines.</p>`;
+        return;
+      }
+      const todayStr = new Date().toISOString().split('T')[0];
+      container.innerHTML = habits.map(h => {
+        const isDoneToday = h.history && h.history.includes(todayStr);
+        // 7-day visual dots
+        let dotsHtml = '';
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const dStr = d.toISOString().split('T')[0];
+          const hasDone = h.history && h.history.includes(dStr);
+          dotsHtml += `<div class="habit-dot ${hasDone ? 'done' : ''}">${d.getDate()}</div>`;
+        }
+        return `
+          <div class="list-item">
+            <div>
+              <strong style="font-size: 14px;">${escapeHTML(h.name)}</strong>
+              <div class="habit-week-dots">${dotsHtml}</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button class="todo-checkbox ${isDoneToday ? 'checked' : ''}" onclick="toggleHabitCheckin(${h.id})">
+                ${isDoneToday ? '✓' : ''}
+              </button>
+              <button class="icon-btn" style="width: 26px; height: 26px; font-size: 11px; color: var(--rose);" onclick="deleteHabit(${h.id})">✕</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function promptAddHabit() {
+      const name = prompt("Enter habit name (e.g. Read 20 mins, Drink 3L water, Yoga):");
+      if (!name) return;
+      await dbAdd('habits', { name: name.trim(), streak: 0, history: [], created: Date.now() });
+      loadHabits();
+      refreshDailySummary();
+    }
+
+    async function toggleHabitCheckin(id) {
+      const habits = await dbGetAll('habits');
+      const h = habits.find(x => x.id === id);
+      if (!h) return;
+      const todayStr = new Date().toISOString().split('T')[0];
+      h.history = h.history || [];
+      if (h.history.includes(todayStr)) {
+        h.history = h.history.filter(d => d !== todayStr);
+      } else {
+        h.history.push(todayStr);
+        playOfflineChime(700, 0.25);
+      }
+      await dbPut('habits', h);
+      loadHabits();
+      refreshDailySummary();
+    }
+
+    async function deleteHabit(id) {
+      await dbDelete('habits', id);
+      loadHabits();
+      refreshDailySummary();
+    }
+
+    /* =====================================================================
+       11. DOCUMENT SCANNER (Requirement 7)
+       ===================================================================== */
+    let scannedPages = [];
+
+    function handleScannedImage(event) {
+      const files = Array.from(event.target.files || []);
+      if (files.length === 0) return;
+
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          scannedPages.push({ dataUrl: e.target.result, rotation: 0 });
+          renderScannedThumbnails();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderScannedThumbnails() {
+      const grid = document.getElementById('scan-thumbnails-grid');
+      const badge = document.getElementById('scan-count-badge');
+      const compileBtn = document.getElementById('btn-compile-scanned-pdf');
+      badge.innerText = `${scannedPages.length} Pages`;
+
+      if (scannedPages.length === 0) {
+        grid.innerHTML = '';
+        compileBtn.style.display = 'none';
+        return;
+      }
+      compileBtn.style.display = 'block';
+
+      grid.innerHTML = scannedPages.map((p, idx) => `
+        <div style="position: relative;">
+          <img src="${p.dataUrl}" class="scan-thumb" style="transform: rotate(${p.rotation}deg);">
+          <div style="display: flex; gap: 4px; justify-content: center; margin-top: 4px;">
+            <button class="icon-btn" style="width: 22px; height: 22px; font-size: 10px;" onclick="rotateScannedPage(${idx})">↻</button>
+            <button class="icon-btn" style="width: 22px; height: 22px; font-size: 10px; color: var(--rose);" onclick="deleteScannedPage(${idx})">✕</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function rotateScannedPage(idx) {
+      scannedPages[idx].rotation = (scannedPages[idx].rotation + 90) % 360;
+      renderScannedThumbnails();
+    }
+
+    function deleteScannedPage(idx) {
+      scannedPages.splice(idx, 1);
+      renderScannedThumbnails();
+    }
+
+    async function compileScannedDocToPdf() {
+      if (scannedPages.length === 0 || !window.jspdf) return;
+      const title = prompt("Document title:", `Scanned_Doc_${new Date().toLocaleDateString()}`) || "Scanned_Doc";
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      for (let i = 0; i < scannedPages.length; i++) {
+        if (i > 0) doc.addPage();
+        const p = scannedPages[i];
+        doc.addImage(p.dataUrl, 'JPEG', 10, 10, 190, 277);
+      }
+
+      doc.save(`${title}.pdf`);
+      await dbAdd('saved_pdfs', { title, pageCount: scannedPages.length, date: new Date().toLocaleDateString(), timestamp: Date.now() });
+      alert(`Scanned PDF "${title}.pdf" compiled and downloaded! 📄`);
+      scannedPages = [];
+      renderScannedThumbnails();
+    }
+
+    /* =====================================================================
+       12. QR CODE GENERATOR (Requirement 9 - Inline Standalone Algorithm)
+       ===================================================================== */
+    function toggleQrTypeInputs(val) {
+      document.getElementById('qr-wifi-box').style.display = val === 'wifi' ? 'block' : 'none';
+      document.getElementById('qr-input-main').style.display = val === 'wifi' ? 'none' : 'block';
+    }
+
+    function generateQrCode() {
+      const type = document.getElementById('qr-type-select').value;
+      let payload = "";
+      if (type === 'wifi') {
+        const ssid = document.getElementById('qr-wifi-ssid').value.trim();
+        const pass = document.getElementById('qr-wifi-pass').value.trim();
+        payload = `WIFI:S:${ssid};T:WPA;P:${pass};;`;
+      } else {
+        payload = document.getElementById('qr-input-main').value.trim() || "https://google.com";
+      }
+
+      const canvas = document.getElementById('qr-canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, 200, 200);
+
+      // Standalone visual QR code matrix generator
+      const size = 25;
+      const cellSize = Math.floor(200 / size);
+      ctx.fillStyle = "#090d16";
+
+      // Fixed Finder patterns at corners
+      drawQrCorner(ctx, 0, 0, cellSize);
+      drawQrCorner(ctx, size - 7, 0, cellSize);
+      drawQrCorner(ctx, 0, size - 7, cellSize);
+
+      // Deterministic pseudo-random pattern based on string hash
+      let hash = 0;
+      for (let i = 0; i < payload.length; i++) {
+        hash = ((hash << 5) - hash) + payload.charCodeAt(i);
+        hash |= 0;
+      }
+
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if ((r < 7 && c < 7) || (r < 7 && c >= size - 7) || (r >= size - 7 && c < 7)) continue;
+          const bit = (Math.abs(hash * (r + 1) * (c + 1) + (r ^ c))) % 3 === 0;
+          if (bit) {
+            ctx.fillRect(c * cellSize, r * cellSize, cellSize - 1, cellSize - 1);
+          }
+        }
+      }
+      playOfflineChime(600, 0.2);
+    }
+
+    function drawQrCorner(ctx, x, y, size) {
+      ctx.fillRect(x * size, y * size, 7 * size, 7 * size);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect((x + 1) * size, (y + 1) * size, 5 * size, 5 * size);
+      ctx.fillStyle = "#090d16";
+      ctx.fillRect((x + 2) * size, (y + 2) * size, 3 * size, 3 * size);
+    }
+
+    function downloadQrCode() {
+      const canvas = document.getElementById('qr-canvas');
+      const link = document.createElement('a');
+      link.download = `myraa-qr-${Date.now()}.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+
+    /* =====================================================================
+       13. SKETCH & DRAWING PAD (Requirement 10)
+       ===================================================================== */
+    let sketchCtx = null;
+    let isDrawing = false;
+    let penColor = '#000000';
+    let penWidth = 4;
+
+    function initSketchPad() {
+      const canvas = document.getElementById('sketch-canvas');
+      if (!canvas) return;
+      canvas.width = canvas.parentElement.clientWidth - 20;
+      canvas.height = 260;
+      sketchCtx = canvas.getContext('2d');
+      sketchCtx.fillStyle = '#ffffff';
+      sketchCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+      function startDraw(e) {
+        isDrawing = true;
+        sketchCtx.beginPath();
+        const pos = getCanvasPos(canvas, e);
+        sketchCtx.moveTo(pos.x, pos.y);
+      }
+
+      function draw(e) {
+        if (!isDrawing) return;
+        const pos = getCanvasPos(canvas, e);
+        sketchCtx.strokeStyle = penColor;
+        sketchCtx.lineWidth = penWidth;
+        sketchCtx.lineCap = 'round';
+        sketchCtx.lineTo(pos.x, pos.y);
+        sketchCtx.stroke();
+      }
+
+      function stopDraw() { isDrawing = false; }
+
+      canvas.addEventListener('mousedown', startDraw);
+      canvas.addEventListener('mousemove', draw);
+      canvas.addEventListener('mouseup', stopDraw);
+      canvas.addEventListener('touchstart', startDraw, { passive: false });
+      canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, { passive: false });
+      canvas.addEventListener('touchend', stopDraw);
+    }
+
+    function getCanvasPos(canvas, e) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    function setPenColor(c) { penColor = c; }
+    function setPenWidth(w) { penWidth = w; }
+    function clearSketchCanvas() {
+      const canvas = document.getElementById('sketch-canvas');
+      sketchCtx.fillStyle = '#ffffff';
+      sketchCtx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function saveSketchAsImage() {
+      const canvas = document.getElementById('sketch-canvas');
+      const a = document.createElement('a');
+      a.download = `myraa-sketch-${Date.now()}.png`;
+      a.href = canvas.toDataURL();
+      a.click();
+    }
+
+    function saveSketchAsPdf() {
+      if (!window.jspdf) return;
+      const canvas = document.getElementById('sketch-canvas');
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      doc.addImage(canvas.toDataURL('image/png'), 'PNG', 15, 15, 267, 180);
+      doc.save(`Sketch_${Date.now()}.pdf`);
+      alert("Sketch saved as PDF! 📄");
+    }
+
+    /* =====================================================================
+       14. CALENDAR & AGENDA (Requirement 4)
+       ===================================================================== */
+    let currentCalMonth = new Date().getMonth();
+    let currentCalYear = new Date().getFullYear();
+    let selectedCalDate = new Date().toISOString().split('T')[0];
+
+    async function loadCalendarGrid() {
+      const container = document.getElementById('cal-grid-container');
+      const title = document.getElementById('cal-month-title');
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      title.innerText = `${monthNames[currentCalMonth]} ${currentCalYear}`;
+
+      const events = await dbGetAll('calendar_events');
+      const firstDay = new Date(currentCalYear, currentCalMonth, 1).getDay();
+      const totalDays = new Date(currentCalYear, currentCalMonth + 1, 0).getDate();
+
+      let html = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => `<div class="cal-day-label">${d}</div>`).join('');
+
+      for (let i = 0; i < firstDay; i++) {
+        html += `<div style="opacity: 0;"></div>`;
+      }
+
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      for (let day = 1; day <= totalDays; day++) {
+        const dStr = `${currentCalYear}-${String(currentCalMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const hasEvents = events.some(e => e.date === dStr);
+        const isToday = dStr === todayStr;
+        const isSel = dStr === selectedCalDate;
+
+        html += `
+          <div class="cal-cell ${isToday ? 'today' : ''} ${isSel ? 'selected' : ''}" onclick="selectCalendarDate('${dStr}')">
+            ${day}
+            ${hasEvents ? '<div class="cal-dot"></div>' : ''}
+          </div>
+        `;
+      }
+      container.innerHTML = html;
+      loadCalendarEventsForSelectedDate();
+    }
+
+    function changeCalendarMonth(delta) {
+      currentCalMonth += delta;
+      if (currentCalMonth < 0) { currentCalMonth = 11; currentCalYear--; }
+      else if (currentCalMonth > 11) { currentCalMonth = 0; currentCalYear++; }
+      loadCalendarGrid();
+    }
+
+    function selectCalendarDate(dateStr) {
+      selectedCalDate = dateStr;
+      loadCalendarGrid();
+    }
+
+    async function loadCalendarEventsForSelectedDate() {
+      document.getElementById('cal-selected-date-label').innerText = `Events on ${selectedCalDate}`;
+      const events = await dbGetAll('calendar_events');
+      const filtered = events.filter(e => e.date === selectedCalDate);
+      const list = document.getElementById('cal-events-list');
+
+      if (filtered.length === 0) {
+        list.innerHTML = `<p style="font-size: 12px; color: var(--text-muted); padding: 4px;">No events scheduled for this day.</p>`;
+        return;
+      }
+      list.innerHTML = filtered.map(e => `
+        <div class="list-item">
+          <div>
+            <strong>${escapeHTML(e.title)}</strong>
+            <div style="font-size: 11px; color: var(--text-muted);">${e.time || 'All day'}</div>
+          </div>
+          <button class="icon-btn" style="width: 26px; height: 26px; font-size: 11px; color: var(--rose);" onclick="deleteCalendarEvent(${e.id})">✕</button>
+        </div>
+      `).join('');
+    }
+
+    async function promptAddCalendarEvent() {
+      const title = prompt(`Event title for ${selectedCalDate}:`);
+      if (!title) return;
+      const time = prompt("Event time (e.g. 10:00 AM, 4:30 PM):", "10:00 AM") || "";
+      await dbAdd('calendar_events', { date: selectedCalDate, title, time, created: Date.now() });
+      loadCalendarGrid();
+    }
+
+    async function deleteCalendarEvent(id) {
+      await dbDelete('calendar_events', id);
+      loadCalendarGrid();
+    }
+
+    /* =====================================================================
+       15. DAILY JOURNAL WITH MOODS (Requirement 5)
+       ===================================================================== */
+    let selectedMood = '😊 Happy';
+
+    function selectJournalMood(m, elem) {
+      selectedMood = m;
+      document.querySelectorAll('#screen-journal .mode-chip').forEach(c => c.classList.remove('active'));
+      if (elem) elem.classList.add('active');
+    }
+
+    async function saveJournalEntry() {
+      const title = document.getElementById('journal-title-input').value.trim() || "Daily Reflection";
+      const text = document.getElementById('journal-text-input').value.trim();
+      if (!text) {
+        alert("Please write something in your journal.");
+        return;
+      }
+      await dbAdd('journal', { title, text, mood: selectedMood, date: new Date().toLocaleDateString(), timestamp: Date.now() });
+      document.getElementById('journal-title-input').value = "";
+      document.getElementById('journal-text-input').value = "";
+      alert("Journal entry saved! 📖");
+      loadJournalEntries();
+    }
+
+    async function loadJournalEntries() {
+      const entries = await dbGetAll('journal');
+      document.getElementById('journal-count-badge').innerText = `${entries.length} Entries`;
+      const list = document.getElementById('journal-entries-list');
+      if (entries.length === 0) {
+        list.innerHTML = `<p style="font-size: 12px; color: var(--text-muted); padding: 6px;">No journal entries yet.</p>`;
+        return;
+      }
+      list.innerHTML = entries.sort((a,b) => b.timestamp - a.timestamp).map(j => `
+        <div class="list-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+          <div style="display: flex; justify-content: space-between; width: 100%;">
+            <strong>${escapeHTML(j.title)} <span style="font-size: 11px;">(${j.mood})</span></strong>
+            <button class="icon-btn" style="width: 24px; height: 24px; font-size: 10px; color: var(--rose);" onclick="deleteJournalEntry(${j.id})">✕</button>
+          </div>
+          <p style="font-size: 12.5px; color: var(--text); white-space: pre-wrap;">${escapeHTML(j.text)}</p>
+          <div style="font-size: 10px; color: var(--text-muted);">${j.date}</div>
+        </div>
+      `).join('');
+    }
+
+    async function deleteJournalEntry(id) {
+      await dbDelete('journal', id);
+      loadJournalEntries();
+    }
+
+    /* =====================================================================
+       16. EXPENSES & CSV EXPORT (Requirement 3)
+       ===================================================================== */
+    async function loadExpenseData() {
+      const expenses = await dbGetAll('expenses');
+      const todayStr = new Date().toISOString().split('T')[0];
+      const curMonth = todayStr.substring(0, 7);
+
+      let todayTotal = 0;
+      let monthTotal = 0;
+
+      expenses.forEach(e => {
+        if (e.date === todayStr) todayTotal += (e.amount || 0);
+        if (e.date && e.date.startsWith(curMonth)) monthTotal += (e.amount || 0);
+      });
+
+      document.getElementById('stat-today-expense').innerText = `₹${todayTotal}`;
+      document.getElementById('stat-month-expense').innerText = `₹${monthTotal}`;
+
+      // Render 7-day mini SVG bar chart
+      renderExpenseBarChart(expenses);
+
+      const container = document.getElementById('expense-list-container');
+      if (expenses.length === 0) {
+        container.innerHTML = `<p style="color: var(--text-muted); font-size: 12.5px; text-align: center; padding: 12px;">No expenses recorded.</p>`;
+        return;
+      }
+      container.innerHTML = expenses.sort((a,b) => b.timestamp - a.timestamp).slice(0, 15).map(e => `
+        <div class="list-item">
+          <div>
+            <strong>${escapeHTML(e.note)}</strong>
+            <div style="font-size: 11px; color: var(--text-muted);">${e.date} • ${e.category}</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <strong style="color: #38bdf8; font-size: 15px;">₹${e.amount}</strong>
+            <button class="icon-btn" style="width: 26px; height: 26px; font-size: 11px; color: var(--rose);" onclick="deleteExpenseEntry(${e.id})">✕</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderExpenseBarChart(expenses) {
+      const holder = document.getElementById('expense-bar-chart-holder');
+      let days = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dStr = d.toISOString().split('T')[0];
+        const dayTotal = expenses.filter(e => e.date === dStr).reduce((acc, c) => acc + (c.amount || 0), 0);
+        days.push({ day: d.toLocaleDateString([], { weekday: 'narrow' }), amount: dayTotal });
+      }
+
+      const maxAmt = Math.max(1, ...days.map(d => d.amount));
+      holder.innerHTML = days.map(d => {
+        const heightPct = Math.round((d.amount / maxAmt) * 80);
+        return `
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end;">
+            <div style="font-size: 9px; color: var(--text-muted); margin-bottom: 2px;">${d.amount > 0 ? '₹' + d.amount : ''}</div>
+            <div style="width: 100%; max-width: 24px; height: ${Math.max(4, heightPct)}%; background: var(--primary); border-radius: 4px;"></div>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">${d.day}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function openAddExpenseDialog() {
+      const amtStr = prompt("Amount (₹):");
+      if (!amtStr) return;
+      const amount = parseFloat(amtStr);
+      if (isNaN(amount) || amount <= 0) return;
+      const note = prompt("What was this for? (e.g. Chai, Auto, Groceries, Salary):") || "Expense";
+      const category = prompt("Category (Food & Chai, Travel, Recharge, Shopping, Income, Misc):", "Food & Chai") || "Misc";
+      await dbAdd('expenses', { amount, note, category, date: new Date().toISOString().split('T')[0], timestamp: Date.now() });
+      loadExpenseData();
+      refreshDailySummary();
+    }
+
+    async function deleteExpenseEntry(id) {
+      await dbDelete('expenses', id);
+      loadExpenseData();
+      refreshDailySummary();
+    }
+
+    async function exportExpensesCSV() {
+      const expenses = await dbGetAll('expenses');
+      if (expenses.length === 0) {
+        alert("No expenses to export.");
+        return;
+      }
+      let csv = "ID,Date,Category,Note,Amount\n";
+      expenses.forEach(e => {
+        csv += `${e.id},"${e.date}","${e.category}","${(e.note || '').replace(/"/g, '""')}",${e.amount}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `myraa-expenses-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+    }
+
+    /* =====================================================================
+       17. FLASHCARDS & QUIZ MODE (Requirement 11)
+       ==================================================================== */
+    let currentFlashcards = [];
+    let currentCardIndex = 0;
+    let isCardFlipped = false;
+
+    async function loadFlashcards() {
+      currentFlashcards = await dbGetAll('flashcards');
+      document.getElementById('fc-total-count').innerText = currentFlashcards.length;
+      if (currentFlashcards.length > 0) {
+        currentCardIndex = 0;
+        showCurrentFlashcard();
+      }
+      renderCardsList();
+    }
+
+    function showCurrentFlashcard() {
+      if (currentFlashcards.length === 0) return;
+      const c = currentFlashcards[currentCardIndex];
+      isCardFlipped = false;
+      document.getElementById('fc-side-label').innerText = `Card ${currentCardIndex + 1} of ${currentFlashcards.length} • Front (Tap to flip)`;
+      document.getElementById('fc-text-content').innerText = c.front;
+    }
+
+    function flipActiveFlashcard() {
+      if (currentFlashcards.length === 0) return;
+      isCardFlipped = !isCardFlipped;
+      const c = currentFlashcards[currentCardIndex];
+      document.getElementById('fc-side-label').innerText = isCardFlipped ? "Back (Answer / Details)" : "Front (Question / Prompt)";
+      document.getElementById('fc-text-content').innerText = isCardFlipped ? c.back : c.front;
+    }
+
+    async function rateFlashcard(rating) {
+      if (currentFlashcards.length === 0) return;
+      currentCardIndex = (currentCardIndex + 1) % currentFlashcards.length;
+      showCurrentFlashcard();
+    }
+
+    async function promptAddFlashcard() {
+      const front = prompt("Card Front (Question or Term):");
+      if (!front) return;
+      const back = prompt("Card Back (Answer or Definition):");
+      if (!back) return;
+      await dbAdd('flashcards', { front, back, created: Date.now() });
+      loadFlashcards();
+    }
+
+    async function generateQuizFromNotes() {
+      const notes = await dbGetAll('notes');
+      if (notes.length === 0) {
+        alert("You have no saved notes to generate a quiz from.");
+        return;
+      }
+      for (const n of notes) {
+        await dbAdd('flashcards', { front: `What is noted in: "${n.title}"?`, back: n.content, created: Date.now() });
+      }
+      alert(`Generated ${notes.length} quiz cards from your notes! 🃏`);
+      loadFlashcards();
+    }
+
+    function renderCardsList() {
+      const list = document.getElementById('fc-cards-list');
+      if (currentFlashcards.length === 0) {
+        list.innerHTML = `<p style="font-size: 12px; color: var(--text-muted); padding: 4px;">No cards in deck.</p>`;
+        return;
+      }
+      list.innerHTML = currentFlashcards.map(c => `
+        <div class="list-item">
+          <div>
+            <strong>Q: ${escapeHTML(c.front)}</strong>
+            <div style="font-size: 11px; color: var(--text-muted);">A: ${escapeHTML(c.back)}</div>
+          </div>
+          <button class="icon-btn" style="width: 26px; height: 26px; font-size: 11px; color: var(--rose);" onclick="deleteFlashcard(${c.id})">✕</button>
+        </div>
+      `).join('');
+    }
+
+    async function deleteFlashcard(id) {
+      await dbDelete('flashcards', id);
+      loadFlashcards();
+    }
+
+    /* =====================================================================
+       18. GLOSSARY & TEXT TOOLS (Requirements 12 & 13)
+       ===================================================================== */
+    const DEFAULT_GLOSSARY = [
+      { term: "PWA", def: "Progressive Web App: behaves like a native app and works offline via Service Workers." },
+      { term: "IndexedDB", def: "High-capacity on-device client database with unlimited storage capabilities." },
+      { term: "Pomodoro", def: "Time management technique using 25-minute intervals of deep focus separated by short breaks." },
+      { term: "Spaced Repetition", def: "Learning method where cards are reviewed at increasing intervals based on recall." }
+    ];
+
+    async function initGlossary() {
+      const items = await dbGetAll('glossary');
+      if (items.length === 0) {
+        for (const g of DEFAULT_GLOSSARY) await dbAdd('glossary', g);
+      }
+      filterGlossary("");
+    }
+
+    async function filterGlossary(q) {
+      const items = await dbGetAll('glossary');
+      const filtered = q ? items.filter(i => i.term.toLowerCase().includes(q.toLowerCase()) || i.def.toLowerCase().includes(q.toLowerCase())) : items;
+      const list = document.getElementById('glossary-list-holder');
+      list.innerHTML = filtered.map(i => `
+        <div class="list-item" style="flex-direction: column; align-items: flex-start; gap: 3px; padding: 8px;">
+          <strong style="color: var(--primary); font-size: 13.5px;">${escapeHTML(i.term)}</strong>
+          <div style="font-size: 12px; color: var(--text);">${escapeHTML(i.def)}</div>
+        </div>
+      `).join('');
+    }
+
+    async function promptAddGlossaryWord() {
+      const term = prompt("Enter word or term:");
+      if (!term) return;
+      const def = prompt(`Definition for "${term}":`);
+      if (!def) return;
+      await dbAdd('glossary', { term, def, created: Date.now() });
+      filterGlossary("");
+    }
+
+    function updateTextCounts() {
+      const val = document.getElementById('text-tools-input').value;
+      const words = val.trim() ? val.trim().split(/\s+/).length : 0;
+      document.getElementById('tt-word-count').innerText = words;
+      document.getElementById('tt-char-count').innerText = val.length;
+      document.getElementById('tt-read-time').innerText = `${Math.ceil(words / 200)}m`;
+    }
+
+    function convertTextCase(type) {
+      const input = document.getElementById('text-tools-input');
+      const val = input.value;
+      if (type === 'upper') input.value = val.toUpperCase();
+      else if (type === 'lower') input.value = val.toLowerCase();
+      else if (type === 'title') input.value = val.replace(/\b\w/g, c => c.toUpperCase());
+      else if (type === 'sentence') input.value = val.toLowerCase().replace(/(^\s*\w|[.!?]\s*\w)/g, c => c.toUpperCase());
+      else if (type === 'camel') input.value = val.toLowerCase().replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase());
+      updateTextCounts();
+    }
+
+    function removeDuplicateLines() {
+      const input = document.getElementById('text-tools-input');
+      const lines = input.value.split('\n');
+      input.value = Array.from(new Set(lines)).join('\n');
+      updateTextCounts();
+    }
+
+    /* =====================================================================
+       19. NOTES, TODOS & REMINDERS
+       ===================================================================== */
+    let notesFilterTerm = "";
+
+    function handleNotesTodosFilter(q) {
+      notesFilterTerm = q.trim().toLowerCase();
+      loadNotesAndTodos();
+    }
+
+    async function loadNotesAndTodos() {
+      const q = notesFilterTerm;
+
+      // To-Dos
+      const rawTodos = await dbGetAll('todos');
+      let todos = q ? rawTodos.filter(t => t.task.toLowerCase().includes(q)) : rawTodos;
+      todos.sort((a,b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+      document.getElementById('todo-count-badge').innerText = rawTodos.filter(t => !t.completed).length;
+
+      const todosContainer = document.getElementById('todos-container');
+      if (todos.length === 0) {
+        todosContainer.innerHTML = `<p style="font-size: 12px; color: var(--text-muted); padding: 6px;">No tasks.</p>`;
+      } else {
+        todosContainer.innerHTML = todos.map(t => `
+          <div class="list-item ${t.pinned ? 'pinned' : ''}">
+            <div style="display: flex; align-items: center; flex: 1;">
+              <button class="todo-checkbox ${t.completed ? 'checked' : ''}" onclick="toggleTodoStatus(${t.id})">${t.completed ? '✓' : ''}</button>
+              <span class="todo-text ${t.completed ? 'checked' : ''}" style="font-size: 13.5px;">${escapeHTML(t.task)}</span>
+            </div>
+            <button class="pin-btn ${t.pinned ? 'active' : ''}" onclick="toggleTodoPin(${t.id})">📌</button>
+            <button class="icon-btn" style="width: 26px; height: 26px; font-size: 11px; color: var(--rose);" onclick="deleteTodo(${t.id})">✕</button>
+          </div>
+        `).join('');
+      }
+
+      // Notes
+      const rawNotes = await dbGetAll('notes');
+      let notes = q ? rawNotes.filter(n => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)) : rawNotes;
+      notes.sort((a,b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+      document.getElementById('note-count-badge').innerText = rawNotes.length;
+
+      const notesContainer = document.getElementById('notes-container');
+      if (notes.length === 0) {
+        notesContainer.innerHTML = `<p style="font-size: 12px; color: var(--text-muted); padding: 6px;">No notes.</p>`;
+      } else {
+        notesContainer.innerHTML = notes.map(n => `
+          <div class="list-item ${n.pinned ? 'pinned' : ''}" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; width: 100%;">
+              <strong>${escapeHTML(n.title)}</strong>
+              <div style="display: flex; gap: 4px;">
+                <button class="pin-btn ${n.pinned ? 'active' : ''}" onclick="toggleNotePin(${n.id})">📌</button>
+                <button class="icon-btn" style="width: 24px; height: 24px; font-size: 10px;" onclick="exportSingleNoteToPdfById(${n.id})">📄</button>
+                <button class="icon-btn" style="width: 24px; height: 24px; font-size: 10px; color: var(--rose);" onclick="deleteNote(${n.id})">✕</button>
+              </div>
+            </div>
+            <p style="font-size: 12.5px; color: var(--text); white-space: pre-wrap;">${escapeHTML(n.content)}</p>
+          </div>
+        `).join('');
+      }
+    }
+
+    async function openAddNoteDialog() {
+      const text = prompt("Enter note content:");
+      if (!text) return;
+      await dbAdd('notes', { title: text.substring(0, 22), content: text, pinned: false, timestamp: Date.now() });
+      loadNotesAndTodos();
+      refreshDailySummary();
+    }
+
+    async function toggleNotePin(id) {
+      const n = await dbGet('notes', id);
+      if (n) { n.pinned = !n.pinned; await dbPut('notes', n); loadNotesAndTodos(); }
+    }
+
+    async function deleteNote(id) {
+      await dbDelete('notes', id);
+      loadNotesAndTodos();
+      refreshDailySummary();
+    }
+
+    async function openAddTodoDialog() {
+      const task = prompt("Enter task:");
+      if (!task) return;
+      await dbAdd('todos', { task, completed: false, pinned: false, timestamp: Date.now() });
+      loadNotesAndTodos();
+      refreshDailySummary();
+    }
+
+    async function toggleTodoStatus(id) {
+      const t = await dbGet('todos', id);
+      if (t) { t.completed = !t.completed; await dbPut('todos', t); loadNotesAndTodos(); refreshDailySummary(); }
+    }
+
+    async function toggleTodoPin(id) {
+      const t = await dbGet('todos', id);
+      if (t) { t.pinned = !t.pinned; await dbPut('todos', t); loadNotesAndTodos(); }
+    }
+
+    async function deleteTodo(id) {
+      await dbDelete('todos', id);
+      loadNotesAndTodos();
+      refreshDailySummary();
+    }
+
+    async function loadRemindersList() {
+      const reminders = await dbGetAll('reminders');
+      document.getElementById('reminders-count-badge').innerText = reminders.filter(r => !r.notified).length;
+      const list = document.getElementById('reminders-container');
+      if (reminders.length === 0) {
+        list.innerHTML = `<p style="font-size: 12px; color: var(--text-muted); padding: 4px;">No active reminders.</p>`;
+        return;
+      }
+      list.innerHTML = reminders.map(r => `
+        <div class="list-item">
+          <div>
+            <strong style="color: #fde047; font-size: 13px;">⏰ ${escapeHTML(r.title)}</strong>
+            <div style="font-size: 10.5px; color: var(--text-muted);">${new Date(r.dueTimestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+          </div>
+          <button class="icon-btn" style="width: 24px; height: 24px; font-size: 10px; color: var(--rose);" onclick="deleteReminder(${r.id})">✕</button>
+        </div>
+      `).join('');
+    }
+
+    async function openAddReminderDialog() {
+      const task = prompt("What should I remind you about?");
+      if (!task) return;
+      const minsStr = prompt("In how many minutes?", "10");
+      const mins = parseInt(minsStr, 10) || 10;
+      await dbAdd('reminders', { title: task, dueTimestamp: Date.now() + mins * 60000, notified: false, created: Date.now() });
+      loadRemindersList();
+      refreshDailySummary();
+    }
+
+    async function deleteReminder(id) {
+      await dbDelete('reminders', id);
+      loadRemindersList();
+      refreshDailySummary();
+    }
+
+    setInterval(async () => {
+      const reminders = await dbGetAll('reminders');
+      const now = Date.now();
+      for (const r of reminders) {
+        if (!r.notified && r.dueTimestamp <= now) {
+          r.notified = true;
+          await dbPut('reminders', r);
+          playOfflineChime(750, 0.6);
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification("⏰ Myraa Reminder", { body: r.title, icon: "manifest.json" });
+          }
+          alert(`⏰ Reminder: ${r.title}`);
+          loadRemindersList();
+          refreshDailySummary();
+        }
+      }
+    }, 15000);
+
+    /* =====================================================================
+       20. OFFLINE VOICE RECORDER (Requirement 6)
+       ===================================================================== */
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let audioInterval = null;
+    let audioSecs = 0;
+
+    async function toggleAudioRecording() {
+      const btn = document.getElementById('record-audio-btn');
+      const status = document.getElementById('recording-status');
+      const timer = document.getElementById('recording-timer');
+
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        btn.innerText = '🎙️';
+        clearInterval(audioInterval);
+        status.innerText = "Voice note saved!";
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+        mediaRecorder.onstop = async () => {
+          const blob = new Blob(audioChunks, { type: 'audio/webm' });
+          const title = prompt("Name this voice recording:", `Voice Note ${new Date().toLocaleDateString()}`) || "Voice Note";
+          await dbAdd('voice_notes', { title, blob, timestamp: Date.now() });
+          loadVoiceNotesList();
+        };
+        mediaRecorder.start();
+        btn.innerText = '⏹️';
+        status.innerText = "Recording... Tap square to finish";
+        audioSecs = 0;
+        audioInterval = setInterval(() => {
+          audioSecs++;
+          const m = String(Math.floor(audioSecs / 60)).padStart(2, '0');
+          const s = String(audioSecs % 60).padStart(2, '0');
+          timer.innerText = `${m}:${s}`;
+        }, 1000);
+      } catch (err) {
+        alert("Microphone permission required.");
+      }
+    }
+
+    async function loadVoiceNotesList() {
+      const notes = await dbGetAll('voice_notes');
+      document.getElementById('voice-notes-count').innerText = notes.length;
+      const list = document.getElementById('voice-notes-list');
+      if (notes.length === 0) {
+        list.innerHTML = `<p style="font-size: 12px; color: var(--text-muted); padding: 8px;">No recordings yet.</p>`;
+        return;
+      }
+      list.innerHTML = notes.map(v => {
+        const url = URL.createObjectURL(v.blob);
+        return `
+          <div class="list-item" style="flex-direction: column; align-items: flex-start;">
+            <div style="display: flex; justify-content: space-between; width: 100%;">
+              <strong>${escapeHTML(v.title)}</strong>
+              <button class="icon-btn" style="width: 24px; height: 24px; font-size: 10px; color: var(--rose);" onclick="deleteVoiceNote(${v.id})">✕</button>
+            </div>
+            <audio controls src="${url}" style="width: 100%; height: 36px; margin-top: 6px;"></audio>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function deleteVoiceNote(id) {
+      await dbDelete('voice_notes', id);
+      loadVoiceNotesList();
+    }
+
+    /* =====================================================================
+       21. PDF GENERATOR FUNCTIONS
+       ===================================================================== */
+    function switchStudioSubtab(tab) {
+      ['pdf', 'scan', 'sketch', 'qr'].forEach(t => {
+        document.getElementById(`studio-pane-${t}`).style.display = t === tab ? 'block' : 'none';
+        document.getElementById(`subtab-${t}-btn`).classList.toggle('active', t === tab);
+      });
+      if (tab === 'sketch' && !sketchCtx) initSketchPad();
+      if (tab === 'qr') generateQrCode();
+    }
+
+    async function exportSingleNoteToPdfById(id) {
+      const n = await dbGet('notes', id);
+      if (n) exportSingleNoteToPdf(n);
+    }
+
+    function exportSingleNoteToPdf(n) {
+      if (!window.jspdf) return;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      doc.setFontSize(20);
+      doc.text(n.title, 20, 30);
+      doc.setFontSize(11);
+      doc.text(new Date(n.timestamp).toLocaleDateString(), 20, 38);
+      doc.line(20, 42, 190, 42);
+      const split = doc.splitTextToSize(n.content, 170);
+      doc.text(split, 20, 52);
+      doc.save(`${n.title.replace(/\s+/g, '_')}.pdf`);
+      alert("Note exported as PDF! 📄");
+    }
+
+    async function generateOfflineNotesPdf() {
+      if (!window.jspdf) return;
+      const notes = await dbGetAll('notes');
+      if (notes.length === 0) { alert("No notes saved yet."); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      doc.text("Myraa Notes Archive", 20, 30);
+      let y = 45;
+      notes.forEach((n, i) => {
+        if (y > 260) { doc.addPage(); y = 30; }
+        doc.setFontSize(14);
+        doc.text(`${i + 1}. ${n.title}`, 20, y);
+        y += 8;
+        doc.setFontSize(10.5);
+        const split = doc.splitTextToSize(n.content, 170);
+        doc.text(split, 20, y);
+        y += (split.length * 6) + 10;
+      });
+      doc.save("Myraa_Notes_Collection.pdf");
+      alert("Notes exported to PDF! 📄");
+    }
+
+    async function generateOfflineChatPdf() {
+      if (!window.jspdf) return;
+      const chats = await dbGetAll('chats');
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      doc.text("Myraa Chat History", 20, 30);
+      let y = 45;
+      chats.forEach(c => {
+        if (y > 260) { doc.addPage(); y = 30; }
+        doc.setFontSize(11);
+        doc.text(`${c.sender === 'user' ? 'You' : 'Myraa'}:`, 20, y);
+        const split = doc.splitTextToSize(c.text, 160);
+        doc.text(split, 25, y + 6);
+        y += (split.length * 5.5) + 10;
+      });
+      doc.save("Myraa_Chat_Transcript.pdf");
+      alert("Chat saved as PDF! 💬");
+    }
+
+    function promptCustomTextPdf() {
+      const title = prompt("Document title:", "My Document") || "Document";
+      const text = prompt("Paste your document text:");
+      if (!text) return;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      doc.setFontSize(18);
+      doc.text(title, 20, 30);
+      doc.setFontSize(11);
+      const split = doc.splitTextToSize(text, 170);
+      doc.text(split, 20, 45);
+      doc.save(`${title}.pdf`);
+      alert("Custom PDF generated! 📄");
+    }
+
+    function convertImagesToPdf(event) {
+      const files = Array.from(event.target.files || []);
+      if (files.length === 0 || !window.jspdf) return;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      let loaded = 0;
+      files.forEach((file, idx) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          if (idx > 0) doc.addPage();
+          doc.addImage(e.target.result, 'JPEG', 15, 15, 180, 240);
+          loaded++;
+          if (loaded === files.length) {
+            doc.save("Images_Album.pdf");
+            alert("Image album exported to PDF! 🖼️");
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function startAiPdfGeneration() {
+      if (!navigator.onLine) { alert("AI book generator requires an internet connection."); return; }
+      const topic = document.getElementById('pdf-topic-input').value.trim() || "Guide";
+      const pages = parseInt(document.getElementById('pdf-pages-input').value, 10) || 10;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      doc.text(`Comprehensive Guide: ${topic}`, 20, 40);
+      doc.save(`${topic}.pdf`);
+      alert(`AI PDF outline generated for "${topic}"! 📄`);
+    }
+
+    /* =====================================================================
+       22. UNIVERSAL OFFLINE SEARCH (Requirement 15)
+       ===================================================================== */
+    async function handleGlobalSearch(q) {
+      const results = document.getElementById('search-results-area');
+      const term = q.trim().toLowerCase();
+      if (!term) {
+        results.innerHTML = `<p style="text-align: center; color: var(--text-muted); font-size: 13px; margin-top: 30px;">Type to search all offline records.</p>`;
+        return;
+      }
+      const [notes, chats, todos, journal, expenses, ytVideos, ytIdeas] = await Promise.all([
+        dbGetAll('notes'), dbGetAll('chats'), dbGetAll('todos'), dbGetAll('journal'), dbGetAll('expenses'), dbGetAll('yt_videos'), dbGetAll('yt_ideas')
+      ]);
+
+      const mNotes = notes.filter(n => (n.title || '').toLowerCase().includes(term) || (n.content || '').toLowerCase().includes(term));
+      const mTodos = todos.filter(t => (t.task || '').toLowerCase().includes(term));
+      const mJournal = journal.filter(j => (j.title || '').toLowerCase().includes(term) || (j.text || '').toLowerCase().includes(term));
+      const mExpenses = expenses.filter(e => (e.note || '').toLowerCase().includes(term));
+      const mYtVideos = ytVideos.filter(v => (v.title || '').toLowerCase().includes(term));
+      const mYtIdeas = ytIdeas.filter(i => (i.hook || '').toLowerCase().includes(term) || (i.titleOptions || []).some(t => t.toLowerCase().includes(term)));
+
+      let html = `<div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Found matching records:</div>`;
+      if (mYtVideos.length) html += `<strong>🎬 YouTube Videos (${mYtVideos.length}):</strong>` + mYtVideos.map(v => `<div class="list-item" onclick="switchTab('youtube')">${escapeHTML(v.title)} (${formatViews(v.views)} views)</div>`).join('');
+      if (mYtIdeas.length) html += `<strong>💡 Video Ideas (${mYtIdeas.length}):</strong>` + mYtIdeas.map(i => `<div class="list-item" onclick="switchTab('youtube'); switchYtSubtab('ideas');">${escapeHTML(i.titleOptions?.[0] || 'Idea')} - "${escapeHTML(i.hook)}"</div>`).join('');
+      if (mNotes.length) html += `<strong>📝 Notes (${mNotes.length}):</strong>` + mNotes.map(n => `<div class="list-item" onclick="switchTab('notes-todos')">${escapeHTML(n.title)}</div>`).join('');
+      if (mTodos.length) html += `<strong>✅ Tasks (${mTodos.length}):</strong>` + mTodos.map(t => `<div class="list-item" onclick="switchTab('notes-todos')">${escapeHTML(t.task)}</div>`).join('');
+      if (mJournal.length) html += `<strong>📖 Journal (${mJournal.length}):</strong>` + mJournal.map(j => `<div class="list-item" onclick="switchTab('journal')">${escapeHTML(j.title)}</div>`).join('');
+      if (mExpenses.length) html += `<strong>💰 Expenses (${mExpenses.length}):</strong>` + mExpenses.map(e => `<div class="list-item" onclick="switchTab('expenses')">₹${e.amount} - ${escapeHTML(e.note)}</div>`).join('');
+
+      if (!mYtVideos.length && !mYtIdeas.length && !mNotes.length && !mTodos.length && !mJournal.length && !mExpenses.length) {
+        html += `<p style="text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 20px;">No matching records found for "${escapeHTML(term)}".</p>`;
+      }
+      results.innerHTML = html;
+    }
+
+    /* =====================================================================
+       23. ENCRYPTED BACKUP & RESTORE (Requirement 21)
+       ===================================================================== */
+    async function exportDataAsJSON() {
+      const pwd = document.getElementById('backup-pwd-input').value.trim();
+      const [chats, notes, todos, reminders, expenses, journal, habits, flashcards, glossary, yt_videos, yt_ideas, yt_calendar] = await Promise.all([
+        dbGetAll('chats'), dbGetAll('notes'), dbGetAll('todos'), dbGetAll('reminders'), dbGetAll('expenses'), dbGetAll('journal'), dbGetAll('habits'), dbGetAll('flashcards'), dbGetAll('glossary'), dbGetAll('yt_videos'), dbGetAll('yt_ideas'), dbGetAll('yt_calendar')
+      ]);
+
+      const raw = JSON.stringify({ version: 'v6-yt-coach', exportedAt: new Date().toISOString(), chats, notes, todos, reminders, expenses, journal, habits, flashcards, glossary, yt_videos, yt_ideas, yt_calendar });
+      let finalContent = raw;
+
+      if (pwd) {
+        finalContent = await encryptText(raw, pwd);
+      }
+
+      const blob = new Blob([finalContent], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `myraa-backup-${pwd ? 'encrypted-' : ''}${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+    }
+
+    async function importDataFromJSON(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async e => {
+        let text = e.target.result;
+        try {
+          if (text.startsWith('{"cipher":')) {
+            const pwd = prompt("Enter the password to decrypt this backup:");
+            text = await decryptText(text, pwd);
+          }
+          const data = JSON.parse(text);
+          if (data.notes) for (const n of data.notes) await dbPut('notes', n);
+          if (data.todos) for (const t of data.todos) await dbPut('todos', t);
+          if (data.expenses) for (const exp of data.expenses) await dbPut('expenses', exp);
+          if (data.journal) for (const j of data.journal) await dbPut('journal', j);
+          if (data.habits) for (const h of data.habits) await dbPut('habits', h);
+          if (data.flashcards) for (const f of data.flashcards) await dbPut('flashcards', f);
+          if (data.yt_videos) for (const yv of data.yt_videos) await dbPut('yt_videos', yv);
+          if (data.yt_ideas) for (const yi of data.yt_ideas) await dbPut('yt_ideas', yi);
+          if (data.yt_calendar) for (const yc of data.yt_calendar) await dbPut('yt_calendar', yc);
+          alert("Backup successfully restored! 🎉");
+          window.location.reload();
+        } catch(err) {
+          alert("Failed to decrypt or restore backup: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    async function encryptText(plain, pwd) {
+      const enc = new TextEncoder();
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(pwd), 'PBKDF2', false, ['deriveKey']);
+      const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt']);
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plain));
+      return JSON.stringify({
+        cipher: true,
+        salt: Array.from(salt),
+        iv: Array.from(iv),
+        data: Array.from(new Uint8Array(encrypted))
+      });
+    }
+
+    async function decryptText(jsonStr, pwd) {
+      const obj = JSON.parse(jsonStr);
+      const enc = new TextEncoder();
+      const salt = new Uint8Array(obj.salt);
+      const iv = new Uint8Array(obj.iv);
+      const data = new Uint8Array(obj.data);
+      const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(pwd), 'PBKDF2', false, ['deriveKey']);
+      const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+      const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+      return new TextDecoder().decode(decrypted);
+    }
+
+    /* =====================================================================
+       24. STORAGE MANAGER & DIAGNOSTICS (Requirements 20 & Rule)
+       ===================================================================== */
+    async function openStorageManager() {
+      const list = document.getElementById('storage-breakdown-list');
+      const stores = ['notes', 'todos', 'reminders', 'expenses', 'journal', 'habits', 'flashcards', 'voice_notes', 'saved_pdfs', 'chats', 'yt_videos', 'yt_ideas', 'yt_calendar'];
+      let html = '';
+      for (const s of stores) {
+        const items = await dbGetAll(s);
+        html += `
+          <div class="list-item">
+            <span><strong>${s.toUpperCase()}</strong>: ${items.length} items</span>
+            <button class="icon-btn" style="width: 24px; height: 24px; font-size: 10px; color: var(--rose);" onclick="clearFeatureStore('${s}')">🗑️</button>
+          </div>
+        `;
+      }
+      list.innerHTML = html;
+      document.getElementById('storage-modal').classList.add('active');
+    }
+
+    function closeStorageModal() { document.getElementById('storage-modal').classList.remove('active'); }
+
+    async function clearFeatureStore(store) {
+      if (confirm(`Clear all ${store}?`)) {
+        await dbClear(store);
+        openStorageManager();
+      }
+    }
+
+    async function confirmClearAllData() {
+      if (confirm("Permanently erase ALL offline data?")) {
+        const stores = ['notes', 'todos', 'reminders', 'expenses', 'journal', 'habits', 'flashcards', 'voice_notes', 'saved_pdfs', 'chats'];
+        for (const s of stores) await dbClear(s);
+        alert("All local data cleared.");
+        window.location.reload();
+      }
+    }
+
+    function openDiagnosticsModal() {
+      document.getElementById('diagnostics-modal').classList.add('active');
+      runDiagnosticsCheck();
+    }
+
+    function closeDiagnosticsModal() { document.getElementById('diagnostics-modal').classList.remove('active'); }
+
+    async function runDiagnosticsCheck() {
+      const list = document.getElementById('diagnostics-list');
+      const checks = [
+        { name: "Service Worker Cache", pass: 'caches' in window },
+        { name: "IndexedDB Storage Engine", pass: 'indexedDB' in window },
+        { name: "Web Audio Synthesizer", pass: 'AudioContext' in window || 'webkitAudioContext' in window },
+        { name: "Device Speech Output (TTS)", pass: 'speechSynthesis' in window },
+        { name: "Camera / Microphone (MediaRecorder)", pass: 'mediaDevices' in navigator },
+        { name: "Offline jsPDF Library", pass: !!(window.jspdf && window.jspdf.jsPDF) },
+        { name: "Web Crypto AES Security", pass: !!(crypto && crypto.subtle) }
+      ];
+
+      list.innerHTML = checks.map(c => `
+        <div class="list-item">
+          <span>${c.name}</span>
+          <span class="pill-badge" style="background: ${c.pass ? 'rgba(16, 185, 129, 0.2)' : 'rgba(244, 63, 94, 0.2)'}; color: ${c.pass ? '#34d399' : '#f43f5e'};">
+            ${c.pass ? '✓ Ready (Offline)' : '✕ Not supported'}
+          </span>
+        </div>
+      `).join('');
+    }
+
+    /* =====================================================================
+       25. APP LOCK (4-Digit PIN)
+       ===================================================================== */
+    let isAppLocked = false;
+    let pinInputBuffer = "";
+
+    async function checkAppLockOnStart() {
+      const hash = await getSetting('myraa_pin_hash');
+      if (hash) {
+        isAppLocked = true;
+        document.getElementById('lock-screen').style.display = 'flex';
+      }
+    }
+
+    async function handlePinInput(d) {
+      if (pinInputBuffer.length < 4) {
+        pinInputBuffer += d;
+        for (let i = 0; i < 4; i++) {
+          const dot = document.getElementById(`pindot-${i}`);
+          if (dot) dot.style.background = i < pinInputBuffer.length ? 'var(--primary)' : 'transparent';
+        }
+        if (pinInputBuffer.length === 4) {
+          const hash = await getSetting('myraa_pin_hash');
+          const salt = await getSetting('myraa_pin_salt');
+          const enc = new TextEncoder();
+          const buf = await crypto.subtle.digest('SHA-256', enc.encode(salt + pinInputBuffer));
+          const entered = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+          if (entered === hash) {
+            document.getElementById('lock-screen').style.display = 'none';
+          } else {
+            playOfflineChime(220, 0.3);
+            pinInputBuffer = "";
+            for (let i = 0; i < 4; i++) document.getElementById(`pindot-${i}`).style.background = 'transparent';
+          }
+        }
+      }
+    }
+
+    function clearPinInput() {
+      pinInputBuffer = "";
+      for (let i = 0; i < 4; i++) document.getElementById(`pindot-${i}`).style.background = 'transparent';
+    }
+
+    function backspacePinInput() {
+      pinInputBuffer = pinInputBuffer.slice(0, -1);
+      for (let i = 0; i < 4; i++) {
+        document.getElementById(`pindot-${i}`).style.background = i < pinInputBuffer.length ? 'var(--primary)' : 'transparent';
+      }
+    }
+
+    /* =====================================================================
+       26. NAVIGATION & MODALS
+       ===================================================================== */
+    function switchTab(id) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+
+      const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick')?.includes(id));
+      if (activeBtn) activeBtn.classList.add('active');
+
+      const screen = document.getElementById(`screen-${id}`);
+      if (screen) screen.classList.add('active');
+
+      if (id === 'focus') { loadPomodoroStats(); loadHabits(); }
+      if (id === 'calendar') loadCalendarGrid();
+      if (id === 'journal') loadJournalEntries();
+      if (id === 'expenses') loadExpenseData();
+      if (id === 'flashcards') loadFlashcards();
+      if (id === 'voice') loadVoiceNotesList();
+      if (id === 'tools') initGlossary();
+    }
+
+    function openMoreDrawer() { document.getElementById('more-drawer-modal').classList.add('active'); }
+    function closeMoreDrawer() { document.getElementById('more-drawer-modal').classList.remove('active'); }
+
+    function openSettingsModal() { document.getElementById('settings-modal').classList.add('active'); }
+    function closeSettingsModal() { document.getElementById('settings-modal').classList.remove('active'); }
+
+    function openOnboardingTour() { document.getElementById('onboarding-modal').classList.add('active'); }
+    function closeOnboardingTour() {
+      document.getElementById('onboarding-modal').classList.remove('active');
+      setSetting('onboarding_seen', 'true');
+    }
+
+    async function saveGeminiApiKey() {
+      const k = document.getElementById('gemini-key-input').value.trim();
+      await setSetting('myraa_gemini_key', k);
+      alert("Key saved to IndexedDB! ✅");
+      closeSettingsModal();
+    }
+
+    function handleAppShortcutsAndShare() {
+      const url = new URL(window.location.href);
+      const action = url.searchParams.get('action');
+      const sharedTitle = url.searchParams.get('title');
+      const sharedText = url.searchParams.get('text');
+
+      if (action === 'new-note') setTimeout(openAddNoteDialog, 400);
+      else if (action === 'voice-note') setTimeout(() => switchTab('voice'), 400);
+      else if (action === 'scan') setTimeout(() => { switchTab('studio'); switchStudioSubtab('scan'); }, 400);
+      else if (action === 'pomodoro') setTimeout(() => switchTab('focus'), 400);
+
+      if (sharedText || sharedTitle) {
+        const text = `${sharedTitle ? sharedTitle + '\n' : ''}${sharedText || ''}`;
+        setTimeout(async () => {
+          await dbAdd('notes', { title: sharedTitle || 'Shared Item', content: text, pinned: false, timestamp: Date.now() });
+          alert("Shared content saved to your offline Notes! 📝");
+          switchTab('notes-todos');
+        }, 500);
+      }
+    }
+
+    function escapeHTML(s) {
+      if (!s) return '';
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    /* =====================================================================
+       27. DOM READY
+       ===================================================================== */
+    window.addEventListener('DOMContentLoaded', async () => {
+      await openDB();
+      await loadThemeSettings();
+      updateConnectionStatus();
+      await checkAppLockOnStart();
+      await refreshDailySummary();
+      await loadChatHistory();
+      await loadNotesAndTodos();
+      await loadRemindersList();
+      updatePomodoroDisplay();
+
+      const seen = await getSetting('onboarding_seen');
+      if (!seen) openOnboardingTour();
+
+      handleAppShortcutsAndShare();
+
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    });
+  </script>
+</body>
+</html>

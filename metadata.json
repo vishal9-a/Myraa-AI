@@ -1,0 +1,6 @@
+{
+  "name": "Myraa",
+  "description": "Voice-first personal AI companion by Vishal Bargal with hands-free wake word, offline STT/TTS, full-screen accessibility automation, and Gemini Live.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
